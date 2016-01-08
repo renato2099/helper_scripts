@@ -25,15 +25,15 @@ class Kudu:
     master_dir  = '/mnt/data/kudu-master'
     tserver_dir = '/mnt/data/kudu-tserver'
 
-Storage.storage = Kudu
-
 class TellStore:
     commitmanager = Storage.master
     servers       = Storage.servers
     approach      = "columnmap"
-    memorysize    = "0xE00000000"
+    memorysize    = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     hashmapsize   =  "0x10000000" if approach == "logstructured" else "0x20000"
     builddir      = "/mnt/local/mpilman/builddirs/tellrelease"
+
+Storage.storage = TellStore
 
 class Tpcc:
     servers0      = ['euler03', 'euler08']
@@ -46,4 +46,7 @@ class Client:
     numClients = 20
     logLevel   = 'FATAL'
     runTime    = 7*60
+
+class Tpch:
+    dbgenFiles = '/mnt/local/tell/tpch_2_17_0/dbgen'
 
