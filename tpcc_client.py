@@ -7,8 +7,8 @@ from ServerConfig import Tpcc
 from ServerConfig import TellStore
 
 parser = ArgumentParser()
-parser.add_argument("-a", dest="ch", help="Populate for CH-Benchmark" action="store_true")
-parser.add_argument("-P", dest='populate', help="Populate data", action='store_true')
+parser.add_argument("-a", dest="ch", help="Populate for CH-Benchmark", action="store_true")
+parser.add_argument("-P", dest='populate', help="Populate data", action="store_true")
 parser.add_argument("outfile", help="CSV file for results", default="out.csv", nargs='?')
 args = parser.parse_args()
 
