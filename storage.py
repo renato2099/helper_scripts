@@ -7,14 +7,12 @@ from ServerConfig import Storage
 from ServerConfig import Kudu
 from ServerConfig import TellStore
 
-master = ""
-servers = []
+master = Storage.master
+servers = Storage.servers
 master_cmd = ""
 server_cmd = ""
 
 if Storage.storage == Kudu:
-    master = Kudu.master
-    servers = Kudu.tservers
     master_dir = Kudu.master_dir
     tserver_dir = Kudu.tserver_dir
 
