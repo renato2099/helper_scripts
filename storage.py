@@ -6,6 +6,9 @@ from ServerConfig import General
 from ServerConfig import Storage
 from ServerConfig import Kudu
 from ServerConfig import TellStore
+import logging
+
+logging.basicConfig()
 
 master = Storage.master
 servers = Storage.servers

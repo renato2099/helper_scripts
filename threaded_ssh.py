@@ -1,9 +1,11 @@
 from pssh import ParallelSSHClient
 from threading import Thread
 
-class ThreadedClients(Thread):
+class Color:
     FAIL = '\033[91m'
 
+
+class ChildClient(Thread):
     def __init__(self, servers, cmd):
         Thread.__init__(self)
         self.client = ParallelSSHClient(servers, user="root")
@@ -16,4 +18,17 @@ class ThreadedClients(Thread):
                 print "Host {0}: {1}".format(host, line)
 
             for line in output[host]['stderr']:
-                print "{0}Host {1}: {2}".format(self.FAIL, host, line)
+                print "{0}Host {1}: {2}".format(Color.FAIL, host, line)
+
+
+class ThreadedClients(Thread):
+    def __init__(self, servers, cmd):
+        Thread.__init__(self)
+        self.children = []
+        for server in servers:
+            print "Create child for server {0} with command {1}".format(server, cmd)
+            self.children.append(ChildClient([server], cmd))
+
+    def run(self):
+        for child in self.children:
+            child.start()
