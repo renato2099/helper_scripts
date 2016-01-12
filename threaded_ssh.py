@@ -6,6 +6,19 @@ import random
 
 class Color:
     FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+class OutputClient(Thread):
+    def __init__(self, host, out, prefix="", suffix=""):
+        Thread.__init__(self)
+        self.host = host
+        self.out = out
+        self.prefix = prefix
+        self.suffix = suffix
+
+    def run(self):
+        for line in self.out:
+            print "{0}Host {1}: {2}{3}".format(self.prefix, self.host, line, self.suffix)
 
 
 class ChildClient(Thread):
@@ -16,12 +29,16 @@ class ChildClient(Thread):
 
     def run(self):
         output = self.client.run_command(self.cmd)
+        threads = []
         for host in output:
-            for line in output[host]['stdout']:
-                print "Host {0}: {1}".format(host, line)
-
-            for line in output[host]['stderr']:
-                print "{0}Host {1}: {2}".format(Color.FAIL, host, line)
+            oThread = OutputClient(host, output[host]['stdout'])
+            oThread.start()
+            threads.append(oThread)
+            oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC)
+            oThread.start()
+            threads.append(oThread)
+        for t in threads:
+            t.join()
 
 
 class ThreadedClients(Thread):
