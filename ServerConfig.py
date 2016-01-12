@@ -15,8 +15,8 @@ class General:
             }
 
 class Storage:
-    servers = ['euler04', 'euler05']#, 'euler06', 'euler07']
-    master  = "euler01"
+    servers = ['euler12']#, 'euler06', 'euler07']
+    master  = "euler12"
 
 class Kudu:
     clean       = True
@@ -28,7 +28,7 @@ class Kudu:
 class TellStore:
     commitmanager = Storage.master
     servers       = Storage.servers
-    approach      = "rowstore"
+    approach      = "columnmap"
     memorysize    = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     hashmapsize   =  "0x10000000" if approach == "logstructured" else "0x20000"
     builddir      = "/mnt/local/mpilman/builddirs/tellrelease"
@@ -41,6 +41,12 @@ class Tpcc:
     warehouses    = 80
     storage       = Storage.storage
     builddir      = TellStore.builddir
+
+class YCSB:
+    servers0      = []
+    servers1      = ["euler12"]
+    builddir      = TellStore.builddir
+    networkThread = 1
 
 class Client:
     numClients = 10
