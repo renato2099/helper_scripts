@@ -1,6 +1,9 @@
 from pssh import ParallelSSHClient
 from threading import Thread
 
+import time
+import random
+
 class Color:
     FAIL = '\033[91m'
 
@@ -22,13 +25,16 @@ class ChildClient(Thread):
 
 
 class ThreadedClients(Thread):
-    def __init__(self, servers, cmd):
+    def __init__(self, servers, cmd, rnd_start=False):
         Thread.__init__(self)
         self.children = []
         for server in servers:
             print "Create child for server {0} with command {1}".format(server, cmd)
             self.children.append(ChildClient([server], cmd))
+            self.rnd_start = rnd_start
 
     def run(self):
         for child in self.children:
+            if self.rnd_start:
+                time.sleep(random.randrange(0, 4))
             child.start()

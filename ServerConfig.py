@@ -15,8 +15,8 @@ class General:
             }
 
 class Storage:
-    servers = ['euler12']#, 'euler06', 'euler07']
-    master  = "euler12"
+    servers = ['euler04', 'euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
+    master  = "euler01"
 
 class Kudu:
     clean       = True
@@ -36,9 +36,9 @@ class TellStore:
 Storage.storage = TellStore
 
 class Tpcc:
-    servers0      = ['euler03', 'euler08']
-    servers1      = ['euler03', 'euler08']#TellStore.servers + ["euler03", "euler08"]
-    warehouses    = 80
+    servers0      = ['euler03', 'euler12']
+    servers1      = ['euler03', 'euler12'] + TellStore.servers
+    warehouses    = 320
     storage       = Storage.storage
     builddir      = TellStore.builddir
 
