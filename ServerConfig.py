@@ -1,3 +1,5 @@
+import getpass
+
 class General:
     infinibandIp = {
             'euler01': '192.168.0.11',
@@ -13,9 +15,11 @@ class General:
             'euler11': '192.168.0.21',
             'euler12': '192.168.0.22'
             }
+    sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
+    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers = ['euler04', 'euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
+    servers = ['euler04', 'euler05', 'euler06', 'euler07']
     master  = "euler01"
 
 class Kudu:
@@ -31,19 +35,42 @@ class TellStore:
     approach      = "columnmap"
     memorysize    = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     hashmapsize   =  "0x10000000" if approach == "logstructured" else "0x20000"
-    builddir      = "/mnt/local/mpilman/builddirs/tellrelease"
+    builddir      = General.builddir
 
-Storage.storage = TellStore
+Storage.storage = Kudu
 
 class Tpcc:
-    servers0      = ['euler03', 'euler12']
-    servers1      = ['euler03', 'euler12'] + TellStore.servers
-    warehouses    = 320
+    servers0      = ['euler02', 'euler08']
+    servers1      = ['euler02', 'euler08'] + TellStore.servers
+    warehouses    = 200
     storage       = Storage.storage
     builddir      = TellStore.builddir
 
+class YCSB:
+    servers0      = Tpcc.servers0
+    servers1      = Tpcc.servers1
+    builddir      = TellStore.builddir
+    ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
+    mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
+    networkThread = 4
+    clientThreads = 32 #32 * (len(servers0) + len(servers1))
+
+class YCSBWorkload:
+    recordcount         = len(Storage.servers) * 30000000
+    operationcount      = 100000 # operations per client!
+    workload            = "com.yahoo.ycsb.workloads.CoreWorkload"
+    
+    readallfields       = True
+    
+    readproportion      = 0.4
+    updateproportion    = 0.3
+    scanproportion      = 0
+    insertproportion    = 0.3
+    
+    requestdistribution = "uniform"
+
 class Client:
-    numClients = 10
+    numClients = 8
     logLevel   = 'FATAL'
     runTime    = 7*60
 
