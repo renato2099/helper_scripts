@@ -14,4 +14,5 @@ if Storage.storage == TellStore:
     storageAddr = '"{0}"'.format(reduce(lambda x, y: x + ";" + y, map(lambda x: General.infinibandIp[x] ,TellStore.servers)))
 
 cmd = "{0}/watch/tpcc/tpch -S {1} -d {2}".format(TellStore.builddir, storageAddr, Tpch.dbgenFiles)
-exit(os.system(cmd))
+print cmd
+#exit(os.system(cmd))

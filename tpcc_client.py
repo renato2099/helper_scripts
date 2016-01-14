@@ -30,4 +30,5 @@ if (args.populate):
 else:
     cmd = cmd + " -t {0} -o {1} -l {2}".format(Client.runTime, args.outfile, Client.logLevel)
 
+print "Execute {0}".format(cmd)
 exit(os.system(cmd))
