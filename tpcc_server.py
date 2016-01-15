@@ -18,8 +18,8 @@ if Tpcc.storage == Kudu:
 elif Tpcc.storage == TellStore:
     cmd = '{0}/watch/tpcc/tpcc_server -W {1} --network-threads 4 -c "{2}" -s "{3}"'.format(Tpcc.builddir, Tpcc.warehouses, General.infinibandIp[TellStore.commitmanager] + ":7242", reduce(semicolonReduce, map(lambda x: hostToIp(x) + ":7241", TellStore.servers)))
 
-client0 = ThreadedClients(Tpcc.servers0, "numactl -m 0 -N 0 {0}".format(cmd), rnd_start=True)
-client1 = ThreadedClients(Tpcc.servers1, "numactl -m 1 -N 1 {0} -p 8712".format(cmd), rnd_start=True)
+client0 = ThreadedClients(Tpcc.servers0, "numactl -m 0 -N 0 {0}".format(cmd), rnd_start=True, root=False)
+client1 = ThreadedClients(Tpcc.servers1, "numactl -m 1 -N 1 {0} -p 8712".format(cmd), rnd_start=True, root=False)
 
 client0.start()
 client1.start()

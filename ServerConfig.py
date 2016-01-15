@@ -16,12 +16,12 @@ class General:
             'euler12': '192.168.0.22'
             }
     sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
-    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
+    builddir      = "/mnt/local/{0}/builddirs/tell".format(getpass.getuser())
 
 class Storage:
-    servers    = ['euler04']
+    servers    = ['euler02', 'euler03']
     master     = "euler01"
-    twoPerNode = True
+    twoPerNode = False
 
 class Kudu:
     clean       = True
@@ -36,13 +36,13 @@ class TellStore:
     approach           = "columnmap"
     defaultMemorysize  = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     defaultHashmapsize = "0x10000000" if approach == "logstructured" else "0x20000"
-    memorysize         = "0xD0000000" if approach == "logstructured" else "0xE0000000"
-    hashmapsize        = "0x1000000" if approach == "logstructured" else "0x2000"
+    memorysize         = defaultMemorysize
+    hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
 
     @staticmethod
     def getCommitManagerAddress():
-        return '{0}:7472'.format(General.infinibandIp[TellStore.commitmanager])
+        return '{0}:7242'.format(General.infinibandIp[TellStore.commitmanager])
 
     @staticmethod
     def getServerList():
@@ -97,8 +97,8 @@ class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
 
 class Spark:
-    master   = 'euler02'
-    slaves   = ['euler03', 'euler05', 'euler11', 'euler10']
+    master   = 'euler05'
+    slaves   = ['euler05']
     sparkdir = "/mnt/local/tell/spark"
     telljava = General.builddir + "/telljava"
     telljar  = telljava + "/telljava-1.0.jar"

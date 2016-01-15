@@ -45,12 +45,12 @@ class ChildClient(Thread):
 
 
 class ThreadedClients(Thread):
-    def __init__(self, servers, cmd, rnd_start=False, asRoot=False):
+    def __init__(self, servers, cmd, rnd_start=False, root=True):
         Thread.__init__(self)
         self.children = []
         for server in servers:
             print "Create child for server {0} with command {1}".format(server, cmd)
-            self.children.append(ChildClient([server], cmd, asRoot=asRoot))
+            self.children.append(ChildClient([server], cmd, asRoot=root))
             self.rnd_start = rnd_start
 
     def run(self):

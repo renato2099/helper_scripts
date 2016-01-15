@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import time
 from ServerConfig import General
 from ServerConfig import Spark
 from ServerConfig import Storage
@@ -19,10 +20,10 @@ sparkDefault = '{0}/conf/spark-defaults.conf'.format(Spark.sparkdir)
 with open(sparkDefault, 'w+') as f:
     f.write('spark.driver.extraClassPath {0}\n'.format(classpath))
     f.write('spark.executor.extraClassPath {0}\n'.format(classpath))
-    f.write('spark.driver.memory 20g\n')
+    f.write('spark.driver.memory 5g\n')
     # TellStore
-    f.write('spark.sql.tell.chunkSizeSmall 100000000\n')
-    f.write('spark.sql.tell.chunkSizeBig 2194304000\n')
+    f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
+    f.write('spark.sql.tell.chunkSizeBig   2147483648\n')
     f.write('spark.sql.tell.chunkCount 20\n')
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
     f.write('spark.sql.tell.storagemanager {0}\n'.format(TellStore.getServerList()))
@@ -41,11 +42,13 @@ for host in Spark.slaves:
 
 
 print master_cmd
-master = ThreadedClients([Spark.master], master_cmd)
+master = ThreadedClients([Spark.master], master_cmd, root=False)
 master.start()
 master.join()
 
+time.sleep(1)
+
 print slave_cmd
-slave = ThreadedClients(Spark.slaves, slave_cmd)
+slave = ThreadedClients(Spark.slaves, slave_cmd, root=False)
 slave.start()
 slave.join()

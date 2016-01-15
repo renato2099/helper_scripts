@@ -6,11 +6,11 @@ master_cmd ="{0}/sbin/stop-master.sh".format(Spark.sparkdir)
 slave_cmd  ="{0}/sbin/stop-slave.sh".format(Spark.sparkdir, Spark.master)
 
 print master_cmd
-master = ThreadedClients([Spark.master], master_cmd)
+master = ThreadedClients([Spark.master], master_cmd, root=False)
 master.start()
 master.join()
 
 print slave_cmd
-slave = ThreadedClients(Spark.slaves, slave_cmd)
+slave = ThreadedClients(Spark.slaves, slave_cmd, root=False)
 slave.start()
 slave.join()
