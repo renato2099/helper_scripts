@@ -14,6 +14,6 @@ if Storage.storage == TellStore:
     storageAddr = TellStore.getServerList()
     masterAddr = TellStore.getCommitManagerAddress()
 
-cmd = '{0}/watch/tpcc/tpch -S "{1}" -d {2} -C "{3}"'.format(TellStore.builddir, storageAddr, Tpch.dbgenFiles, masterAddr)
+cmd = '{0}/watch/tpcc/tpch -S "{1}" -d {2}/{3} -C "{4}"'.format(TellStore.builddir, storageAddr, Tpch.dbgenFiles, Tpch.scaling, masterAddr)
 print cmd
 exit(os.system(cmd))

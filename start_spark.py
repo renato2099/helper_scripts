@@ -23,8 +23,8 @@ with open(sparkDefault, 'w+') as f:
     f.write('spark.driver.memory 5g\n')
     # TellStore
     f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
-    f.write('spark.sql.tell.chunkSizeBig   2147483648\n')
-    f.write('spark.sql.tell.chunkCount 20\n')
+    f.write('spark.sql.tell.chunkSizeBig   3221225472\n')
+    f.write('spark.sql.tell.chunkCount 32\n')
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
     f.write('spark.sql.tell.storagemanager {0}\n'.format(TellStore.getServerList()))
 
@@ -32,8 +32,8 @@ with open(sparkEnv, 'w+') as f:
     f.write('export JAVA_HOME={0}\n'.format(Spark.javahome))
     f.write('export LD_LIBRARY_PATH={0}\n'.format(Spark.telljava))
 
-configCopyCommand = lambda host: os.system('scp {0} {1} {2}:{3}/conf/'.format(sparkEnv, sparkDefault, host, Spark.sparkdir))
-jarCopyCommand = lambda host: os.system('scp {0}/*.jar {1}:{0}'.format(Spark.jarsDir, host))
+configCopyCommand = lambda host: os.system('scp {0} {1} root@{2}:{3}/conf/'.format(sparkEnv, sparkDefault, host, Spark.sparkdir))
+jarCopyCommand = lambda host: os.system('scp {0}/*.jar root@{1}:{0}'.format(Spark.jarsDir, host))
 configCopyCommand(Spark.master)
 jarCopyCommand(Spark.master)
 for host in Spark.slaves:

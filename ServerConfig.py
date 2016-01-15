@@ -94,15 +94,15 @@ class Client:
     runTime    = 7*60
 
 class Tpch:
-    dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
     builddir   = TellStore.builddir
     server     = "euler12"
     client     = "euler12"
-    scaling    = 0.1
+    scaling    = 10
+    dbgenFiles = '/mnt/SG/braunl-tpch-data/all/'
 
 class Spark:
     master   = 'euler04'
-    slaves   = ['euler05', 'euler06']
+    slaves   = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
     sparkdir = "/mnt/local/tell/spark"
     telljava = General.builddir + "/telljava"
     telljar  = telljava + "/telljava-1.0.jar"
