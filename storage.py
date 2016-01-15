@@ -45,8 +45,15 @@ else:
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
 mclient.start()
+
 tclient = ThreadedClients(servers, "numactl -m 0 -N 0 {0}".format(server_cmd))
 tclient.start()
+
+tclient2 = None
+if Storage.twoPerNode:
+    tclient2 = ThreadedClients(servers, "numactl -m 1 -N 1 {0} -p 7240".format(server_cmd))
+    tclient2.start()
+    tclient2.join()
 
 mclient.join()
 tclient.join()

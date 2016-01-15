@@ -19,8 +19,9 @@ class General:
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers = ['euler04']
-    master  = "euler01"
+    servers    = ['euler04']
+    master     = "euler01"
+    twoPerNode = True
 
 class Kudu:
     clean       = True
@@ -38,6 +39,18 @@ class TellStore:
     memorysize         = "0xD0000000" if approach == "logstructured" else "0xE0000000"
     hashmapsize        = "0x1000000" if approach == "logstructured" else "0x2000"
     builddir           = General.builddir
+
+    @staticmethod
+    def getCommitManagerAddress():
+        return '{0}:7472'.format(General.infinibandIp[TellStore.commitmanager])
+
+    @staticmethod
+    def getServerList():
+        serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(General.infinibandIp[x], p), l)
+        l = serversForList(TellStore.servers, "7241")
+        if Storage.twoPerNode:
+            l += serversForList(TellStore.servers, "7240")
+        return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
 class Cassandra:
     servers = Storage.servers
@@ -84,10 +97,11 @@ class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
 
 class Spark:
-    master     = Storage.master
-    slaves     = []
-    sparkdir   = "/mnt/local/tell/spark"
-    telljava   = General.builddir + "/telljava"
-    telljar    = telljava + "/telljava-1.0.jar"
-    javahome  = "/mnt/local/tell/java8"
+    master   = 'euler02'
+    slaves   = ['euler03', 'euler05']
+    sparkdir = "/mnt/local/tell/spark"
+    telljava = General.builddir + "/telljava"
+    telljar  = telljava + "/telljava-1.0.jar"
+    javahome = "/mnt/local/tell/java8"
+    jarsDir  = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
 
