@@ -96,8 +96,8 @@ class Client:
 class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
     builddir   = TellStore.builddir
-    server     = "euler11"
-    client     = "euler11"
+    server     = "euler12"
+    client     = "euler12"
     scaling    = 0.1
 
 class Spark:
