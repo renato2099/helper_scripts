@@ -19,7 +19,7 @@ class General:
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers = ['euler04', 'euler05', 'euler06', 'euler07']
+    servers = ['euler04']
     master  = "euler01"
 
 class Kudu:
@@ -30,19 +30,25 @@ class Kudu:
     tserver_dir = '/mnt/data/kudu-tserver'
 
 class TellStore:
-    commitmanager = Storage.master
-    servers       = Storage.servers
-    approach      = "columnmap"
-    memorysize    = "0xD00000000" if approach == "logstructured" else "0xE00000000"
-    hashmapsize   =  "0x10000000" if approach == "logstructured" else "0x20000"
-    builddir      = General.builddir
+    commitmanager      = Storage.master
+    servers            = Storage.servers
+    approach           = "columnmap"
+    defaultMemorysize  = "0xD00000000" if approach == "logstructured" else "0xE00000000"
+    defaultHashmapsize = "0x10000000" if approach == "logstructured" else "0x20000"
+    memorysize         = "0xD0000000" if approach == "logstructured" else "0xE0000000"
+    hashmapsize        = "0x1000000" if approach == "logstructured" else "0x2000"
+    builddir           = General.builddir
 
-Storage.storage = Kudu
+class Cassandra:
+    servers = Storage.servers
+    master  = Storage.master
+
+Storage.storage = TellStore
 
 class Tpcc:
-    servers0      = ['euler02', 'euler08']
-    servers1      = ['euler02', 'euler08'] + TellStore.servers
-    warehouses    = 200
+    servers0      = ['euler02']
+    servers1      = [] + TellStore.servers
+    warehouses    = 50
     storage       = Storage.storage
     builddir      = TellStore.builddir
 
@@ -75,5 +81,5 @@ class Client:
     runTime    = 7*60
 
 class Tpch:
-    dbgenFiles = '/mnt/local/tell/tpch_2_17_0/dbgen'
+    dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
 

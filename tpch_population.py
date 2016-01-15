@@ -16,4 +16,4 @@ if Storage.storage == TellStore:
 
 cmd = '{0}/watch/tpcc/tpch -S {1} -d {2} -C "{3}"'.format(TellStore.builddir, storageAddr, Tpch.dbgenFiles, masterAddr)
 print cmd
-exit(os.system(cmd))
+#exit(os.system(cmd))

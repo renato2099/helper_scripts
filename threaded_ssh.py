@@ -22,9 +22,12 @@ class OutputClient(Thread):
 
 
 class ChildClient(Thread):
-    def __init__(self, servers, cmd):
+    def __init__(self, servers, cmd, asRoot = True):
         Thread.__init__(self)
-        self.client = ParallelSSHClient(servers, user="root")
+        if asRoot:
+            self.client = ParallelSSHClient(servers, user="root")
+        else:
+            self.client = ParallelSSHClient(servers)
         self.cmd = cmd
 
     def run(self):
@@ -42,12 +45,12 @@ class ChildClient(Thread):
 
 
 class ThreadedClients(Thread):
-    def __init__(self, servers, cmd, rnd_start=False):
+    def __init__(self, servers, cmd, rnd_start=False, asRoot=False):
         Thread.__init__(self)
         self.children = []
         for server in servers:
             print "Create child for server {0} with command {1}".format(server, cmd)
-            self.children.append(ChildClient([server], cmd))
+            self.children.append(ChildClient([server], cmd, asRoot=asRoot))
             self.rnd_start = rnd_start
 
     def run(self):
