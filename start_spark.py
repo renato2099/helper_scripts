@@ -40,15 +40,18 @@ for host in Spark.slaves:
     configCopyCommand(host)
     jarCopyCommand(host)
 
+rmClients = ThreadedClients([Spark.master] + Spark.slaves, "rm -rf {0}/work".format(Spark.sparkdir), root=True)
+rmClients.start()
+rmClients.join()
 
 print master_cmd
-master = ThreadedClients([Spark.master], master_cmd, root=False)
+master = ThreadedClients([Spark.master], master_cmd, root=True)
 master.start()
 master.join()
 
 time.sleep(1)
 
 print slave_cmd
-slave = ThreadedClients(Spark.slaves, slave_cmd, root=False)
+slave = ThreadedClients(Spark.slaves, slave_cmd, root=True)
 slave.start()
 slave.join()

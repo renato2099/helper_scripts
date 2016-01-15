@@ -16,12 +16,12 @@ class General:
             'euler12': '192.168.0.22'
             }
     sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
-    builddir      = "/mnt/local/{0}/builddirs/tell".format(getpass.getuser())
+    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
     servers    = ['euler02', 'euler03']
     master     = "euler01"
-    twoPerNode = False
+    twoPerNode = True
 
 class Kudu:
     clean       = True
@@ -97,8 +97,8 @@ class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
 
 class Spark:
-    master   = 'euler05'
-    slaves   = ['euler05']
+    master   = 'euler04'
+    slaves   = ['euler05', 'euler06']
     sparkdir = "/mnt/local/tell/spark"
     telljava = General.builddir + "/telljava"
     telljar  = telljava + "/telljava-1.0.jar"
