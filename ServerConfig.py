@@ -98,7 +98,7 @@ class Tpch:
 
 class Spark:
     master   = 'euler02'
-    slaves   = ['euler03', 'euler05']
+    slaves   = ['euler03', 'euler05', 'euler11', 'euler10']
     sparkdir = "/mnt/local/tell/spark"
     telljava = General.builddir + "/telljava"
     telljar  = telljava + "/telljava-1.0.jar"
