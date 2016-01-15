@@ -83,3 +83,11 @@ class Client:
 class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/0.1/'
 
+class Spark:
+    master     = Storage.master
+    slaves     = []
+    sparkdir   = "/mnt/local/tell/spark"
+    telljava   = General.builddir + "/telljava"
+    telljar    = telljava + "/telljava-1.0.jar"
+    javahome  = "/mnt/local/tell/java8"
+
