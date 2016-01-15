@@ -21,7 +21,7 @@ class General:
 class Storage:
     servers    = ['euler02', 'euler03']
     master     = "euler01"
-    twoPerNode = False
+    twoPerNode = True
 
 class Kudu:
     clean       = True

@@ -7,7 +7,7 @@ from ServerConfig import General
 
 import time
 
-server_cmd = 'cd {0}; {0}/watch/tpch/tpch_server -s "{1}" -c "{2}"'.format(Tpch.builddir, TellStore.getServerList(), TellStore.getCommitManagerAddress())
+server_cmd = 'cd {0}/watch/tpch/tpch_server; {0}/watch/tpch/tpch_server -s "{1}" -c "{2}"'.format(Tpch.builddir, TellStore.getServerList(), TellStore.getCommitManagerAddress())
 client_cmd = 'cd {0}; {0}/watch/tpch/tpch_client -H "{1}" -s {2} -P'.format(Tpch.builddir, Tpch.server, Tpch.scaling)
 
 server = ThreadedClients([Tpch.server], server_cmd)
