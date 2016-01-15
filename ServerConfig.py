@@ -16,7 +16,7 @@ class General:
             'euler12': '192.168.0.22'
             }
     sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
-    builddir      = "/mnt/local/{0}/builddirs/tell".format(getpass.getuser())
+    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
     servers    = ['euler02', 'euler03']
