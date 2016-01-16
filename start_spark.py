@@ -22,9 +22,13 @@ with open(sparkDefault, 'w+') as f:
     f.write('spark.executor.extraClassPath {0}\n'.format(classpath))
     f.write('spark.driver.memory 5g\n')
     # TellStore
-    f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
-    f.write('spark.sql.tell.chunkSizeBig   3221225472\n')
-    f.write('spark.sql.tell.chunkCount 32\n')
+    f.write('spark.sql.tell.numPartitions {0}\n'.format(Spark.tellPartitions))
+    #f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
+    numChunks = TellStore.scanThreads * len(TellStore.servers) * Spark.tellPartitions
+    if (TellStore.twoPerNode):
+        numChunks *= 2
+    f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(TellStore.scanMemory // numChunks))
+    f.write('spark.sql.tell.chunkCount {0}\n'.format(numChunks))
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
     f.write('spark.sql.tell.storagemanager {0}\n'.format(TellStore.getServerList()))
 

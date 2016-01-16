@@ -39,6 +39,8 @@ class TellStore:
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
+    scanMemory         = 100*1024*1024*1024 # 100GB
+    scanThreads        = 1 # do not change (currently)
 
     @staticmethod
     def getCommitManagerAddress():
@@ -101,11 +103,12 @@ class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/'
 
 class Spark:
-    master   = 'euler04'
-    slaves   = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
-    sparkdir = "/mnt/local/tell/spark"
-    telljava = General.builddir + "/telljava"
-    telljar  = telljava + "/telljava-1.0.jar"
-    javahome = "/mnt/local/tell/java8"
-    jarsDir  = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
+    master         = 'euler04'
+    slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
+    sparkdir       = "/mnt/local/tell/spark"
+    telljava       = General.builddir + "/telljava"
+    telljar        = telljava + "/telljava-1.0.jar"
+    javahome       = "/mnt/local/tell/java8"
+    jarsDir        = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
+    tellPartitions = 32
 
