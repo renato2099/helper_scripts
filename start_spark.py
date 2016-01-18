@@ -20,12 +20,15 @@ sparkDefault = '{0}/conf/spark-defaults.conf'.format(Spark.sparkdir)
 with open(sparkDefault, 'w+') as f:
     f.write('spark.driver.extraClassPath {0}\n'.format(classpath))
     f.write('spark.executor.extraClassPath {0}\n'.format(classpath))
-    f.write('spark.driver.memory 5g\n')
+    f.write('spark.serializer org.apache.spark.serializer.KryoSerializer\n')
+    f.write('spark.driver.memory 10g\n')
+    f.write('spark.executor.memory 80g\n')
+    f.write('spark.executor.cores {0}\n'.format(Spark.numCores))
     # TellStore
     f.write('spark.sql.tell.numPartitions {0}\n'.format(Spark.tellPartitions))
     #f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
-    numChunks = TellStore.scanThreads * len(TellStore.servers) * Spark.tellPartitions
-    if (TellStore.twoPerNode):
+    numChunks = len(TellStore.servers) * Spark.numCores
+    if (Storage.twoPerNode):
         numChunks *= 2
     f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(TellStore.scanMemory // numChunks))
     f.write('spark.sql.tell.chunkCount {0}\n'.format(numChunks))

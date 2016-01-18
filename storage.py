@@ -41,7 +41,7 @@ if Storage.storage == Kudu:
                 print "{0}Host {1}: {2}".format(self.FAIL, host, line)
 else:
     master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
-    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads 1 --network-threads 2 --gc-interval 20 -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.commitmanager, TellStore.memorysize, TellStore.hashmapsize)
+    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval 20 -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize)
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
 mclient.start()
