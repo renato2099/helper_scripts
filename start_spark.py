@@ -29,7 +29,7 @@ with open(sparkDefault, 'w+') as f:
     f.write('spark.sql.tell.numPartitions {0}\n'.format(Spark.tellPartitions))
     #f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
     numChunks = (len(TellStore.servers) + len(TellStore.servers1)) * Spark.numCores
-    f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(TellStore.scanMemory // numChunks))
+    f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(((TellStore.scanMemory // numChunks) // 8) * 8))
     f.write('spark.sql.tell.chunkCount {0}\n'.format(numChunks))
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
     f.write('spark.sql.tell.storagemanager {0}\n'.format(TellStore.getServerList()))
@@ -58,7 +58,7 @@ master = ThreadedClients([Spark.master], master_cmd, root=True)
 master.start()
 master.join()
 
-time.sleep(1)
+time.sleep(2)
 
 print slave_cmd
 slave = ThreadedClients(Spark.slaves, slave_cmd, root=True)
