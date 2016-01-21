@@ -56,7 +56,7 @@ master = ThreadedClients([Spark.master], master_cmd, root=True)
 master.start()
 master.join()
 
-time.sleep(1)
+time.sleep(2)
 
 print slave_cmd
 slave = ThreadedClients(Spark.slaves, slave_cmd, root=True)
