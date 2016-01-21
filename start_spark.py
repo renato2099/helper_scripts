@@ -22,14 +22,13 @@ with open(sparkDefault, 'w+') as f:
     f.write('spark.executor.extraClassPath {0}\n'.format(classpath))
     f.write('spark.serializer org.apache.spark.serializer.KryoSerializer\n')
     f.write('spark.driver.memory 10g\n')
-    f.write('spark.executor.memory 80g\n')
+    f.write('spark.executor.memory 90g\n')
+    f.write('spark.local.dir {0}\n'.format(Spark.tmpDir))
     f.write('spark.executor.cores {0}\n'.format(Spark.numCores))
     # TellStore
     f.write('spark.sql.tell.numPartitions {0}\n'.format(Spark.tellPartitions))
     #f.write('spark.sql.tell.chunkSizeSmall 104857600\n')
-    numChunks = len(TellStore.servers) * Spark.numCores
-    if (Storage.twoPerNode):
-        numChunks *= 2
+    numChunks = (len(TellStore.servers) + len(TellStore.servers1)) * Spark.numCores
     f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(TellStore.scanMemory // numChunks))
     f.write('spark.sql.tell.chunkCount {0}\n'.format(numChunks))
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
@@ -39,11 +38,14 @@ with open(sparkEnv, 'w+') as f:
     f.write('export JAVA_HOME={0}\n'.format(Spark.javahome))
     f.write('export LD_LIBRARY_PATH={0}\n'.format(Spark.telljava))
 
+tmpDirCommand = lambda host:  os.system("ssh root@{0} 'rm -rf {1}; mkdir {1}'".format(host, Spark.tmpDir))
 configCopyCommand = lambda host: os.system('scp {0} {1} root@{2}:{3}/conf/'.format(sparkEnv, sparkDefault, host, Spark.sparkdir))
 jarCopyCommand = lambda host: os.system('scp {0}/*.jar root@{1}:{0}'.format(Spark.jarsDir, host))
+tmpDirCommand(Spark.master)
 configCopyCommand(Spark.master)
 jarCopyCommand(Spark.master)
 for host in Spark.slaves:
+    tmpDirCommand(host)
     configCopyCommand(host)
     jarCopyCommand(host)
 

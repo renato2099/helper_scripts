@@ -15,6 +15,8 @@ servers = Storage.servers
 master_cmd = ""
 server_cmd = ""
 
+numa1Args = ''
+
 if Storage.storage == Kudu:
     master_dir = Kudu.master_dir
     tserver_dir = Kudu.tserver_dir
@@ -39,9 +41,10 @@ if Storage.storage == Kudu:
     
             for line in tservers_out[host]['stderr']:
                 print "{0}Host {1}: {2}".format(self.FAIL, host, line)
-else:
+elif Storage.storage == TellStore:
     master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
-    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval 20 -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize)
+    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval 60 -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize)
+    numa1Args = '-p 7240'
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
 mclient.start()
@@ -49,13 +52,11 @@ mclient.start()
 tclient = ThreadedClients(servers, "numactl -m 0 -N 0 {0}".format(server_cmd))
 tclient.start()
 
-tclient2 = None
-if Storage.twoPerNode:
-    tclient2 = ThreadedClients(servers, "numactl -m 1 -N 1 {0} -p 7240".format(server_cmd))
-    tclient2.start()
-    tclient2.join()
+tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args))
+tclient2.start()
 
 mclient.join()
 tclient.join()
+tclient2.join()
 
 

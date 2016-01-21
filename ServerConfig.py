@@ -19,9 +19,9 @@ class General:
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers    = ['euler02', 'euler03']
+    servers    = ['euler02', 'euler03', 'euler04']
+    servers1   = ['euler02', 'euler03']
     master     = "euler01"
-    twoPerNode = True
 
 class Kudu:
     clean       = True
@@ -33,10 +33,11 @@ class Kudu:
 class TellStore:
     commitmanager      = Storage.master
     servers            = Storage.servers
+    servers1           = Storage.servers1
     approach           = "columnmap"
     defaultMemorysize  = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     defaultHashmapsize = "0x10000000" if approach == "logstructured" else "0x20000"
-    memorysize         = defaultMemorysize
+    memorysize         = defaultMemorysize # 0xC80000000 # 50G
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 1*1024*1024*1024 # 1GB
@@ -49,9 +50,7 @@ class TellStore:
     @staticmethod
     def getServerList():
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(General.infinibandIp[x], p), l)
-        l = serversForList(TellStore.servers, "7241")
-        if Storage.twoPerNode:
-            l += serversForList(TellStore.servers, "7240")
+        l = serversForList(TellStore.servers, "7241") + serversForList(TellStore.servers1, "7240")
         return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
 class Cassandra:
@@ -103,13 +102,14 @@ class Tpch:
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/'
 
 class Spark:
-    master         = 'euler04'
+    master         = 'euler11'
     slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10']
     sparkdir       = "/mnt/local/tell/spark"
     telljava       = General.builddir + "/telljava"
     telljar        = telljava + "/telljava-1.0.jar"
     javahome       = "/mnt/local/tell/java8"
     jarsDir        = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
+    tmpDir         = "/mnt/data/sparktmp"
     numCores       = 8
     tellPartitions = 48
 
