@@ -19,9 +19,9 @@ class General:
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers    = ['euler02', 'euler03']
-    master     = "euler01"
-    twoPerNode = True
+    servers    = ['euler02', 'euler03', 'euler04', 'euler05']
+    master     = 'euler01'
+    twoPerNode = False
 
 class Kudu:
     clean       = True
@@ -39,7 +39,7 @@ class TellStore:
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 1*1024*1024*1024 # 1GB
+    scanMemory         = 10*1024*1024*1024 # 1GB
     scanThreads        = 2
 
     @staticmethod
@@ -65,12 +65,12 @@ class Tpcc:
     servers1      = [] + TellStore.servers
     warehouses    = 50
     storage       = Storage.storage
-    builddir      = TellStore.builddir
+    builddir      = General.builddir
 
 class YCSB:
     servers0      = Tpcc.servers0
     servers1      = Tpcc.servers1
-    builddir      = TellStore.builddir
+    builddir      = General.builddir
     ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
@@ -96,7 +96,7 @@ class Client:
     runTime    = 7*60
 
 class Tpch:
-    builddir   = TellStore.builddir
+    builddir   = General.builddir
     server     = "euler12"
     client     = "euler12"
     scaling    = 10
@@ -113,3 +113,15 @@ class Spark:
     numCores       = 8
     tellPartitions = 48
 
+class Aim:
+    sepservers0   = []
+    sepservers1   = TellStore.servers
+    rtaservers0   = ["euler06"]
+    rtaservers1   = ["euler06"]
+    schemaFile    = General.sourceDir + "/watch/aim-benchmark/server/meta_db.db"
+    subscribers   = 20 * 1024 * 1024
+    messageRate   = 20 * 1000
+    batchSize     = 5
+    numSEPClients = 5
+    numRTAClients = 1
+    builddir      = General.builddir
