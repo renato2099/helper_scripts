@@ -30,7 +30,7 @@ with open(sparkDefault, 'w+') as f:
     numChunks = len(TellStore.servers) * Spark.numCores
     if (Storage.twoPerNode):
         numChunks *= 2
-    f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(TellStore.scanMemory // numChunks))
+    f.write('spark.sql.tell.chunkSizeBig   {0}\n'.format(((TellStore.scanMemory // numChunks) // 8) * 8))
     f.write('spark.sql.tell.chunkCount {0}\n'.format(numChunks))
     f.write('spark.sql.tell.commitmanager {0}\n'.format(TellStore.getCommitManagerAddress()))
     f.write('spark.sql.tell.storagemanager {0}\n'.format(TellStore.getServerList()))
