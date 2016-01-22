@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from pssh import ParallelSSHClient
+import os
 from threaded_ssh import ThreadedClients
 
 from ServerConfig import General
@@ -18,20 +18,24 @@ server_cmd = ""
 
 numa1Args = ''
 
+def copyToHost(hosts, path):
+    for host in hosts:
+        os.system('scp {0} root@{1}:{0}'.format(path, host))
+
 def startHdfs():
     dfs_start_cmd ="{0}/sbin/start-dfs.sh".format(Hadoop.hadoopdir)
     nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
-    
-    mkClients = ThreadedClients(Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
+
+    mkClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
     mkClients.start()
     mkClients.join()
-    
-    mntClients = ThreadedClients(Hadoop.datanodes, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Hadoop.datadirSz, Hadoop.datadir), root=True)
+
+    mntClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Hadoop.datadirSz, Hadoop.datadir), root=True)
     mntClients.start()
     mntClients.join()
-    
+
     xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
-    
+
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
     with open(coreSiteXml, 'w+') as f:
@@ -39,15 +43,23 @@ def startHdfs():
         f.write(xmlProp("fs.default.name", "hdfs://{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
         f.write(xmlProp("hadoop.tmp.dir", Hadoop.datadir))
         f.write("</configuration>")
-    
+
     # hadoop_env.sh
     hadoopEnv = '{0}/etc/hadoop/hadoop-env.sh'.format(Hadoop.hadoopdir)
-    with open(hadoopEnv, 'a') as f:
+    with open(hadoopEnv, 'w+') as f:
+        f.write('export HADOOP_NAMENODE_OPTS="-Dhadoop.security.logger=INFO,DRFAS -Dhdfs.audit.logger=INFO,DRFAAUDIT $HADOOP_NAMENODE_OPTS"\n')
+        f.write('HADOOP_JOBTRACKER_OPTS="-Dhadoop.security.logger=INFO,DRFAS -Dmapred.audit.logger=INFO,MRAUDIT -Dhadoop.mapreduce.jobsummary.logger=INFO,JSA $HADOOP_JOBTRACKER_OPTS"\n')
+        f.write('HADOOP_TASKTRACKER_OPTS="-Dhadoop.security.logger=ERROR,console -Dmapred.audit.logger=ERROR,console $HADOOP_TASKTRACKER_OPTS"\n')
+        f.write('HADOOP_DATANODE_OPTS="-Dhadoop.security.logger=ERROR,DRFAS $HADOOP_DATANODE_OPTS"\n')
+        f.write('export HADOOP_SECONDARYNAMENODE_OPTS="-Dhadoop.security.logger=INFO,DRFAS -Dhdfs.audit.logger=INFO,DRFAAUDIT $HADOOP_SECONDARYNAMENODE_OPTS"\n')
+        f.write('export HADOOP_OPTS="-Djava.net.preferIPv4Stack=true $HADOOP_CLIENT_OPTS"\n')
+        f.write('export HADOOP_CLIENT_OPTS="-Xmx2048m $HADOOP_CLIENT_OPTS"\n')
+        f.write('export HADOOP_SECURE_DN_USER=\n')
         f.write("export JAVA_HOME={0}\n".format(General.javahome))
         f.write("export HADOOP_LOG_DIR={0}\n".format(Hadoop.datadir))
         f.write("export HADOOP_SECURE_DN_LOG_DIR={0}\n".format(Hadoop.datadir))
         f.write("export HADOOP_CONF_DIR={0}/etc/hadoop/\n".format(Hadoop.hadoopdir))
-    
+
     # hdfs-site.xml
     hdfsSiteXml = '{0}/etc/hadoop/hdfs-site.xml'.format(Hadoop.hadoopdir)
     with open(hdfsSiteXml, 'w+') as f:
@@ -56,22 +68,30 @@ def startHdfs():
        f.write(xmlProp("dfs.permissions", "true"))
        f.write(xmlProp("dfs.namenode.rpc-address", "{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
        f.write("</configuration>")
-    
+
+    copyToHost(Hadoop.datanodes + [Hadoop.namenode], coreSiteXml)
+    copyToHost(Hadoop.datanodes + [Hadoop.namenode], hadoopEnv)
+    copyToHost(Hadoop.datanodes + [Hadoop.namenode], hdfsSiteXml)
+
     # master file
     masterFile = open('{0}/etc/hadoop/masters'.format(Hadoop.hadoopdir), 'w')
     masterFile.write(Hadoop.namenode)
     masterFile.close()
-    
+
     # slaves file
     slavesFile = '{0}/etc/hadoop/slaves'.format(Hadoop.hadoopdir)
-    with open(slavesFile, 'w') as f:
+    with open(slavesFile, 'w+') as f:
        for host in Hadoop.datanodes:
           f.write(host + "\n")
     
+    copyToHost([Hadoop.namenode], slavesFile)
+    copyToHost([Hadoop.namenode], masterFile)
+
     print nn_format_cmd
-    os.system('ssh root@{0} {1}'.format(Hadoop.namenode, nn_format_cmd))
+    os.system('ssh -A root@{0} {1}'.format(Hadoop.namenode, nn_format_cmd))
     print dfs_start_cmd
-    os.system('ssh root@{0} {1}'.format(Hadoop.namenode, dfs_start_cmd))
+    os.system('ssh -A root@{0} {1}'.format(Hadoop.namenode, dfs_start_cmd))
+
 
 if Storage.storage == Kudu:
     master_dir = Kudu.master_dir
@@ -103,7 +123,7 @@ elif Storage.storage == TellStore:
     numa1Args = '-p 7240'
 elif Storage.storage == Hadoop:
     startHdfs()
-    return
+    exit(0)
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
 mclient.start()

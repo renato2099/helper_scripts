@@ -2,20 +2,14 @@
 import os, sys
 from ServerConfig import General
 from ServerConfig import Hadoop
-from threaded_ssh import ThreadedClients
 
-umntClients = ThreadedClients(Hadoop.datanodes, "umount {0}".format(Hadoop.datadir), root=True)
-umntClients.start()
-umntClients.join()
+def execssh(hosts, cmd):
+    for host in hosts:
+        os.system('ssh -A root@{0} {1}'.format(host, cmd))
 
-rmClients = ThreadedClients(Hadoop.datanodes, "rm -r {0}".format(Hadoop.datadir), root=True)
-rmClients.start()
-rmClients.join()
-
-stopHdfsCmd = '{0}/sbin/stop-dfs.sh'.format(Hadoop.hadoopdir)
-hdfsClients = ThreadedClients(Hadoop.datanodes, stopHdfsCmd, root=True)
-hdfsClients.start()
-hdfsClients.join()
+execssh([Hadoop.namenode], '{0}/sbin/stop-dfs.sh'.format(Hadoop.hadoopdir))
+execssh(Hadoop.datanodes + [Hadoop.namenode], "umount {0}".format(Hadoop.datadir))
+execssh(Hadoop.datanodes + [Hadoop.namenode], "rm -r {0}".format(Hadoop.datadir))
 
 #hadoop-end.sh
 hadoopEnv = '{0}/etc/hadoop/hadoop-env.sh'.format(Hadoop.hadoopdir)
