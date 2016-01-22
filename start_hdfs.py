@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import os
 import time
+
+from pssh import ParallelSSHClient
 from ServerConfig import General
 from ServerConfig import Hadoop
 from ServerConfig import Storage
@@ -18,8 +20,9 @@ mntClients = ThreadedClients(Hadoop.datanodes, "mount -t tmpfs -o size={0}G tmpf
 mntClients.start()
 mntClients.join()
 
-# modify core-site.xml
 xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
+
+# modify core-site.xml
 coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
 with open(coreSiteXml, 'w+') as f:
     f.write("<configuration>\n")
@@ -56,9 +59,9 @@ with open(slavesFile, 'w') as f:
       f.write(host + "\n")
 
 print dfs_start_cmd
-namenode = ThreadedClients([Hadoop.namenode], dfs_start_cmd , root=True)
-namenode.start()
-namenode.join()
+nnClient = ThreadedClients([Hadoop.namenode], dfs_start_cmd, root=True)
+nnClient.start()
+nnClient.join()
 
 #time.sleep(2)
 
