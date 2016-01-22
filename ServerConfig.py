@@ -138,8 +138,16 @@ class Hadoop:
     dfsreplication = "1"
 
 class Hbase:
-    hmaster       = 'euler08'
-    hregions      = ['euler07', 'euler06']
+    hmaster       = 'euler10'
+    #hmaster       = 'euler08'
+    #hregions      = ['euler07', 'euler06']
+    hregions      = ['euler10']
     hbasedir      = "/mnt/local/tell/hbase"
     hdfsNamenode  = Hadoop.namenode
+
+class Zookeeper:
+    zkinstances   = ['euler10']
+    zkdir         = "/mnt/local/tell/zookeeper"
+    zkdata        = "/mnt/ramfs/zk"
+    clientport    = "2181"
     

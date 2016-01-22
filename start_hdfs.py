@@ -9,8 +9,8 @@ from ServerConfig import Storage
 from ServerConfig import TellStore
 from threaded_ssh import ThreadedClients
 
-dfs_start_cmd ="{0}/sbin/start-dfs.sh".format(Hadoop.hadoopdir)
-nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+dfs_start_cmd = "JAVA_HOME={1} {0}/sbin/start-dfs.sh".format(Hadoop.hadoopdir, General.javahome)
+nn_format_cmd = "JAVA_HOME={1} {0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir, General.javahome)
 
 mkClients = ThreadedClients(Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
 mkClients.start()
