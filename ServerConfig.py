@@ -17,6 +17,7 @@ class General:
             }
     sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
+    javahome       = "/mnt/local/tell/java8"
 
 class Storage:
     servers    = ['euler02', 'euler03', 'euler04', 'euler05']
@@ -126,3 +127,20 @@ class Aim:
     numSEPClients = 5
     numRTAClients = 2
     builddir      = General.builddir
+
+class Hadoop:
+    namenode       = 'euler10'
+    hdfsport       = '20042'
+    #datanodes     = ['euler10', 'euler11', 'euler12']
+    datanodes      = ['euler10']
+    hadoopdir      = "/mnt/local/tell/hadoop"
+    datadir        = "/mnt/ramfs/hadoop"
+    datadirSz      = "20"
+    dfsreplication = "1"
+
+class Hbase:
+    hmaster       = 'euler08'
+    hregions      = ['euler07', 'euler06']
+    hbasedir      = "/mnt/local/tell/hbase"
+    hdfsNamenode  = Hadoop.namenode
+    
