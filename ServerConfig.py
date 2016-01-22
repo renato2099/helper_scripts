@@ -20,9 +20,9 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler02', 'euler03', 'euler04', 'euler05']
+    servers    = ['euler11']
     servers1   = []
-    master     = "euler01"
+    master     = "euler10"
 
 class Kudu:
     clean       = True
@@ -55,11 +55,27 @@ class TellStore:
         l = serversForList(TellStore.servers, "7241") + serversForList(TellStore.servers1, "7240")
         return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
+class Hadoop:
+    namenode       = Storage.master
+    hdfsport       = '20042'
+    #datanodes     = ['euler10', 'euler11', 'euler12']
+    datanodes      = Storage.servers
+    hadoopdir      = "/mnt/local/tell/hadoop"
+    datadir        = "/mnt/ramfs/hadoop"
+    datadirSz      = "20"
+    dfsreplication = "1"
+
+class Hbase:
+    hmaster       = 'euler08'
+    hregions      = ['euler07', 'euler06']
+    hbasedir      = "/mnt/local/tell/hbase"
+    hdfsNamenode  = Hadoop.namenode
+
 class Cassandra:
     servers = Storage.servers
     master  = Storage.master
 
-Storage.storage = TellStore
+Storage.storage = Hadoop
 
 class Tpcc:
     servers0      = ['euler02']
@@ -128,19 +144,4 @@ class Aim:
     numRTAClients = 2
     builddir      = General.builddir
 
-class Hadoop:
-    namenode       = 'euler10'
-    hdfsport       = '20042'
-    #datanodes     = ['euler10', 'euler11', 'euler12']
-    datanodes      = ['euler10']
-    hadoopdir      = "/mnt/local/tell/hadoop"
-    datadir        = "/mnt/ramfs/hadoop"
-    datadirSz      = "20"
-    dfsreplication = "1"
-
-class Hbase:
-    hmaster       = 'euler08'
-    hregions      = ['euler07', 'euler06']
-    hbasedir      = "/mnt/local/tell/hbase"
-    hdfsNamenode  = Hadoop.namenode
     
