@@ -22,7 +22,7 @@ if Storage.storage == Kudu:
     tserver_dir = Kudu.tserver_dir
 
     master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
-    server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} -block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, master)
+    server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, master)
     if Kudu.clean:
         rmcommand = 'rm -rf {0}/*'
         master_client = ParallelSSHClient([master], user="root")
@@ -43,7 +43,7 @@ if Storage.storage == Kudu:
                 print "{0}Host {1}: {2}".format(self.FAIL, host, line)
 elif Storage.storage == TellStore:
     master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
-    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval 60 -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize)
+    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
     numa1Args = '-p 7240'
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))

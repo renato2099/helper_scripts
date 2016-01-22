@@ -19,8 +19,8 @@ class General:
     builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
 
 class Storage:
-    servers    = ['euler02', 'euler03', 'euler04']
-    servers1   = ['euler02', 'euler03']
+    servers    = ['euler02', 'euler03', 'euler04', 'euler05']
+    servers1   = []
     master     = "euler01"
 
 class Kudu:
@@ -40,8 +40,9 @@ class TellStore:
     memorysize         = defaultMemorysize # 0xC80000000 # 50G
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 10*1024*1024*1024 # 1GB
+    scanMemory         = 30*1024*1024*1024 # 1GB
     scanThreads        = 2
+    gcInterval         = 20
 
     @staticmethod
     def getCommitManagerAddress():
@@ -116,12 +117,12 @@ class Spark:
 class Aim:
     sepservers0   = []
     sepservers1   = TellStore.servers
-    rtaservers0   = ["euler06"]
-    rtaservers1   = ["euler06"]
+    rtaservers0   = ["euler06", 'euler07', 'euler08', 'euler09', 'euler10']
+    rtaservers1   = []
     schemaFile    = General.sourceDir + "/watch/aim-benchmark/server/meta_db.db"
     subscribers   = 20 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
     numSEPClients = 5
-    numRTAClients = 1
+    numRTAClients = 2
     builddir      = General.builddir
