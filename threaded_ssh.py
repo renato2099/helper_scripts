@@ -31,17 +31,26 @@ class ChildClient(Thread):
         self.cmd = cmd
 
     def run(self):
-        output = self.client.run_command(self.cmd)
-        threads = []
-        for host in output:
-            oThread = OutputClient(host, output[host]['stdout'])
-            oThread.start()
-            threads.append(oThread)
-            oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC)
-            oThread.start()
-            threads.append(oThread)
-        for t in threads:
-            t.join()
+        try:
+            output = self.client.run_command(self.cmd)
+            threads = []
+            for host in output:
+                oThread = OutputClient(host, output[host]['stdout'])
+                oThread.start()
+                threads.append(oThread)
+                oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC)
+                oThread.start()
+                threads.append(oThread)
+            for t in threads:
+                t.join()
+        except:
+            type, value, tb = sys.exc_info()
+            traceback.print_exc()
+            last_frame = lambda tb=tb: last_frame(tb.tb_next) if tb.tb_next else tb
+            frame = last_frame().tb_frame
+            ns = dict(frame.f_globals)
+            ns.update(frame.f_locals)
+            code.interact(local=ns)
 
 
 class ThreadedClients(Thread):
