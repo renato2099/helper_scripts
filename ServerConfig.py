@@ -20,9 +20,9 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler11']
+    servers    = ['euler10', 'euler12']
     servers1   = []
-    master     = "euler10"
+    master     = "euler09"
 
 class Kudu:
     clean       = True
@@ -65,17 +65,25 @@ class Hadoop:
     datadirSz      = "20"
     dfsreplication = "1"
 
+class Zookeeper:
+    zkserver      = 'euler06'
+    zkdir         = "/mnt/local/tell/zookeeper"
+    ticktime      = '2000'
+    datadir       = '/mnt/data/zk_data'
+    clientport    = '2181'
+
 class Hbase:
-    hmaster       = 'euler08'
-    hregions      = ['euler07', 'euler06']
+    hmaster       = 'euler06'
+    hregions      = ['euler07', 'euler08']
     hbasedir      = "/mnt/local/tell/hbase"
     hdfsNamenode  = Hadoop.namenode
+    zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
     servers = Storage.servers
     master  = Storage.master
 
-Storage.storage = Hadoop
+Storage.storage = Hbase
 
 class Tpcc:
     servers0      = ['euler02']
