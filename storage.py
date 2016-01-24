@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import time
 from threaded_ssh import ThreadedClients
 
 from ServerConfig import General
@@ -21,6 +22,9 @@ server_cmd = ""
 
 numa1Args = ''
 
+concatStr = lambda servers, sep: sep.join(servers)
+xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
+
 def copyToHost(hosts, path):
     for host in hosts:
         os.system('scp {0} root@{1}:{0}'.format(path, host))
@@ -37,6 +41,7 @@ def prepHbaseSite():
          f.write(xmlProp("zookeeper.znode.parent", "/hbase-unsecure"))
          f.write(xmlProp("hbase.zookeeper.property.dataDir", Zookeeper.datadir))
          f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Zookeeper.zkserver], ',')))
+         f.write(xmlProp("hbase.hregion.max.filesize", Hbase.regionsize))
          f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
          f.write("</configuration>\n")
     copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseSiteXml)
@@ -63,6 +68,7 @@ def prepRegionServers():
 def startZk():
     zooCfg = '{0}/conf/zoo.cfg'.format(Zookeeper.zkdir)
     with open(zooCfg, 'w+') as f:
+         f.write("maxClientCnxns={0}\n".format(Zookeeper.maxclients))
          f.write("tickTime={0}\n".format(Zookeeper.ticktime))
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
@@ -91,7 +97,7 @@ def startHdfs():
     mntClients.start()
     mntClients.join()
 
-    xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
+    time.sleep(2)
 
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
@@ -99,6 +105,8 @@ def startHdfs():
         f.write("<configuration>\n")
         f.write(xmlProp("fs.default.name", "hdfs://{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
         f.write(xmlProp("hadoop.tmp.dir", Hadoop.datadir))
+        f.write(xmlProp("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem"))
+        f.write(xmlProp("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem"))
         f.write("</configuration>")
 
     # hadoop_env.sh

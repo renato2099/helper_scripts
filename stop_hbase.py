@@ -15,8 +15,8 @@ def stopZk():
     execssh([Zookeeper.zkserver], "rm -r {0}".format(Zookeeper.datadir))
 
 def main():
-   stopZk()
    hbase_stop_cmd = '{0}/bin/stop-hbase.sh'.format(Hbase.hbasedir)
+   stopZk()
    execssh([Hbase.hmaster], hbase_stop_cmd)
 
 if __name__ == "__main__":
