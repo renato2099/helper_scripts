@@ -146,7 +146,7 @@ class Aim:
     sepservers1   = ['euler11']
     rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
     rtaservers1   = []
-    schemaFile    = General.buildDir + "/watch/aim-benchmark/meta_db.db"
+    schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
     subscribers   = 10 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
