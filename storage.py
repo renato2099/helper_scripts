@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 from threaded_ssh import ThreadedClients
+from pssh import ParallelSSHClient
 
 from ServerConfig import General
 from ServerConfig import Storage
