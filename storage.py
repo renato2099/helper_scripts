@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import time
 from threaded_ssh import ThreadedClients
 from pssh import ParallelSSHClient
 
@@ -8,6 +9,9 @@ from ServerConfig import Storage
 from ServerConfig import Kudu
 from ServerConfig import TellStore
 from ServerConfig import Hadoop
+from ServerConfig import Zookeeper
+from ServerConfig import Hbase
+
 import logging
 
 logging.basicConfig()
@@ -19,9 +23,68 @@ server_cmd = ""
 
 numa1Args = ''
 
+concatStr = lambda servers, sep: sep.join(servers)
+xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
+
 def copyToHost(hosts, path):
     for host in hosts:
         os.system('scp {0} root@{1}:{0}'.format(path, host))
+
+# modify hbase-site.xml
+def prepHbaseSite():
+    hbaseSiteXml = '{0}/conf/hbase-site.xml'.format(Hbase.hbasedir)
+    with open(hbaseSiteXml, 'w+') as f:
+         f.write("<?xml version=\"1.0\"?>\n")
+         f.write("<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>\n")
+         f.write("<configuration>\n")
+         f.write(xmlProp("hbase.rootdir", "hdfs://" + Hadoop.namenode + ":" + Hadoop.hdfsport + "/hbase"))
+         f.write(xmlProp("hbase.cluster.distributed", "true"))
+         f.write(xmlProp("zookeeper.znode.parent", "/hbase-unsecure"))
+         f.write(xmlProp("hbase.zookeeper.property.dataDir", Zookeeper.datadir))
+         f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Zookeeper.zkserver], ',')))
+         f.write(xmlProp("hbase.hregion.max.filesize", Hbase.regionsize))
+         f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
+         f.write("</configuration>\n")
+    copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseSiteXml)
+
+def prepHbaseEnv():
+    hbaseEnv = '{0}/conf/hbase-env.sh'.format(Hbase.hbasedir)
+    with open(hbaseEnv, 'w+') as f:
+         f.write("export JAVA_HOME={0}\n".format(General.javahome))
+         f.write("export HBASE_OPTS=\"-XX:+UseConcMarkSweepGC\"\n")
+         f.write("export HBASE_OPTS=\"-XX:+UseConcMarkSweepGC\"\n")
+         f.write("export HBASE_MASTER_OPTS=\"$HBASE_MASTER_OPTS -XX:PermSize=128m -XX:MaxPermSize=128m\"\n")
+         f.write("export HBASE_REGIONSERVER_OPTS=\"$HBASE_REGIONSERVER_OPTS -XX:PermSize=129m -XX:MaxPermSize=128m\"\n")
+         f.write("export HBASE_MANAGES_ZK=false")
+    copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseEnv)
+
+# conf/regionservers
+def prepRegionServers():
+    regions = '{0}/conf/regionservers'.format(Hbase.hbasedir)
+    with open(regions, 'w+') as f:
+         f.write(concatStr(Hbase.hregions, '\n'))
+    copyToHost([Hbase.hmaster], regions)
+
+
+def startZk():
+    zooCfg = '{0}/conf/zoo.cfg'.format(Zookeeper.zkdir)
+    with open(zooCfg, 'w+') as f:
+         f.write("maxClientCnxns={0}\n".format(Zookeeper.maxclients))
+         f.write("tickTime={0}\n".format(Zookeeper.ticktime))
+         f.write("dataDir={0}\n".format(Zookeeper.datadir))
+         f.write("clientPort={0}\n".format(Zookeeper.clientport))
+    os.system('ssh -A root@{0} {1}'.format(Zookeeper.zkserver, "mkdir -p {0}".format(Zookeeper.datadir)))
+    zk_cmd = '{0}/bin/zkServer.sh start'.format(Zookeeper.zkdir)
+    copyToHost([Zookeeper.zkserver], zooCfg)
+    print "{0} : {1}".format(Zookeeper.zkserver, zk_cmd)
+    os.system('ssh -A root@{0} {1}'.format(Zookeeper.zkserver, zk_cmd))
+
+def startHbase():
+    prepRegionServers()
+    prepHbaseSite()
+    prepHbaseEnv()
+    start_hbase_cmd = "JAVA_HOME={1} {0}/bin/start-hbase.sh".format(Hbase.hbasedir, General.javahome)
+    os.system('ssh -A root@{0} {1}'.format(Hbase.hmaster, start_hbase_cmd))
 
 def startHdfs():
     dfs_start_cmd ="{0}/sbin/start-dfs.sh".format(Hadoop.hadoopdir)
@@ -35,7 +98,7 @@ def startHdfs():
     mntClients.start()
     mntClients.join()
 
-    xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
+    time.sleep(2)
 
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
@@ -43,6 +106,8 @@ def startHdfs():
         f.write("<configuration>\n")
         f.write(xmlProp("fs.default.name", "hdfs://{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
         f.write(xmlProp("hadoop.tmp.dir", Hadoop.datadir))
+        f.write(xmlProp("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem"))
+        f.write(xmlProp("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem"))
         f.write("</configuration>")
 
     # hadoop_env.sh
@@ -124,6 +189,11 @@ elif Storage.storage == TellStore:
     numa1Args = '-p 7240'
 elif Storage.storage == Hadoop:
     startHdfs()
+    exit(0)
+elif Storage.storage == Hbase:
+    startHdfs()
+    startZk()
+    startHbase()
     exit(0)
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))

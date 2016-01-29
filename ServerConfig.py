@@ -22,7 +22,7 @@ class General:
 class Storage:
     servers    = ['euler10']
     servers1   = []
-    master     = "euler10"
+    master     = "euler08"
 
 class Kudu:
     clean       = True
@@ -62,14 +62,24 @@ class Hadoop:
     datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
-    datadirSz      = "20"
-    dfsreplication = "1"
+    datadirSz      = "100"
+    dfsreplication = "3"
+
+class Zookeeper:
+    zkserver      = 'euler05'
+    zkdir         = "/mnt/local/tell/zookeeper"
+    ticktime      = '6000'
+    datadir       = '/mnt/data/zk_data'
+    clientport    = '2181'
+    maxclients    = '6000'
 
 class Hbase:
-    hmaster       = 'euler08'
-    hregions      = ['euler07', 'euler06']
+    hmaster       = 'euler05'
+    hregions      = ['euler06', 'euler07']
     hbasedir      = "/mnt/local/tell/hbase"
+    regionsize    = '49294967296'
     hdfsNamenode  = Hadoop.namenode
+    zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
     servers = Storage.servers
@@ -91,11 +101,11 @@ class YCSB:
     ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
-    clientThreads = 32 #32 * (len(servers0) + len(servers1))
+    clientThreads = 2 #32 * (len(servers0) + len(servers1))
 
 class YCSBWorkload:
     recordcount         = len(Storage.servers) * 30000000
-    operationcount      = 100000 # operations per client!
+    operationcount      = 170000 # operations per client!
     workload            = "com.yahoo.ycsb.workloads.CoreWorkload"
     
     readallfields       = True
