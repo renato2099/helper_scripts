@@ -22,7 +22,7 @@ class General:
 class Storage:
     servers    = ['euler09', 'euler10', 'euler12', 'euler01', 'euler03', 'euler04']
     servers1   = []
-    master     = "euler08"
+    master     = "euler10"
 
 class Kudu:
     clean       = True
@@ -146,7 +146,7 @@ class Aim:
     sepservers1   = TellStore.servers
     rtaservers0   = ["euler06", 'euler07', 'euler08', 'euler09', 'euler10']
     rtaservers1   = []
-    schemaFile    = General.sourceDir + "/watch/aim-benchmark/server/meta_db.db"
+    schemaFile    = General.buildDir + "/watch/aim-benchmark/meta_db.db"
     subscribers   = 20 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
