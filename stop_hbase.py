@@ -16,8 +16,8 @@ def stopZk():
 
 def main():
    hbase_stop_cmd = '{0}/bin/stop-hbase.sh'.format(Hbase.hbasedir)
-   stopZk()
    execssh([Hbase.hmaster], hbase_stop_cmd)
+   stopZk()
 
 if __name__ == "__main__":
    main()
