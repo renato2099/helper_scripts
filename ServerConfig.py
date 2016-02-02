@@ -20,9 +20,10 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler09', 'euler10', 'euler12', 'euler01', 'euler03', 'euler04']
+    servers    = ['euler11']
     servers1   = []
-    master     = "euler08"
+    #master     = "euler10"
+    master     = ["euler10"]
 
 class Kudu:
     clean       = True
@@ -62,11 +63,11 @@ class Hadoop:
     datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
-    datadirSz      = "100"
+    datadirSz      = "10"
     dfsreplication = "3"
 
 class Zookeeper:
-    zkserver      = 'euler05'
+    zkserver      = 'euler08'
     zkdir         = "/mnt/local/tell/zookeeper"
     ticktime      = '6000'
     datadir       = '/mnt/data/zk_data'
@@ -74,7 +75,7 @@ class Zookeeper:
     maxclients    = '6000'
 
 class Hbase:
-    hmaster       = 'euler05'
+    hmaster       = 'euler08'
     hregions      = ['euler06', 'euler07']
     hbasedir      = "/mnt/local/tell/hbase"
     regionsize    = '49294967296'
@@ -82,10 +83,18 @@ class Hbase:
     zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
-    servers = Storage.servers
-    master  = Storage.master
+    servers       = Storage.servers
+    master        = Storage.master
+    casdir        = "/mnt/local/tell/cassandra"
+    logdir        = "/mnt/data/cassandra/cass_log"
+    datadir       = "/mnt/ramfs/cassandra/cass_data"
+    datadirSz     = 100
+    listenaddr    = ""
+    nativeport    = '9042'
+    rpcaddr       = "0.0.0.0"
+    rpcport       = '9160'
 
-Storage.storage = Hbase
+Storage.storage = Cassandra
 
 class Tpcc:
     servers0      = ['euler02']
@@ -101,14 +110,20 @@ class YCSB:
     ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
-    clientThreads = 2 #32 * (len(servers0) + len(servers1))
+    clientThreads = 1 #32 * (len(servers0) + len(servers1))
 
 class YCSBWorkload:
-    recordcount         = len(Storage.servers) * 30000000
+    recordcount         = (len(Storage.servers) + len(Storage.master)) * 7500000
+    #recordcount         = len(Hbase.hregions) * 7 500 000
     operationcount      = 170000 # operations per client!
     workload            = "com.yahoo.ycsb.workloads.CoreWorkload"
     
     readallfields       = True
+    
+    #readproportion      = 1
+    #updateproportion    = 0
+    #scanproportion      = 0
+    #insertproportion    = 0
     
     readproportion      = 0.4
     updateproportion    = 0.3
@@ -154,4 +169,11 @@ class Aim:
     numRTAClients = 2
     builddir      = General.builddir
 
-    
+class Presto:    
+    coordinator    = 'euler05'
+    nodes          = ["euler06", "euler07", "euler08"]
+    prestodir      = "/mnt/local/tell/presto"
+    nodememory     = 5
+    nodequery      = 3
+    jvmheap        = 20
+    jvmheapresgion = 10

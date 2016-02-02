@@ -10,6 +10,7 @@ from ServerConfig import TellStore
 from ServerConfig import Hadoop
 from ServerConfig import Zookeeper
 from ServerConfig import Hbase
+from ServerConfig import Cassandra
 
 import logging
 
@@ -157,6 +158,50 @@ def startHdfs():
     print dfs_start_cmd
     os.system('ssh -A root@{0} {1}'.format(Hadoop.namenode, dfs_start_cmd))
 
+def confCassandraCluster():
+    templateconf = None
+    allServers = Cassandra.servers + Cassandra.master
+    for host in allServers:
+       f = open('cassandra.yaml.template', 'r')
+       templateconf = f.read()
+       f.close()
+       templateconf = templateconf.replace("casseeds", "\"" + concatStr(Cassandra.master,',') + "\"")
+       templateconf = templateconf.replace("casdatadir", Cassandra.datadir)
+       templateconf = templateconf.replace("caslogdir", Cassandra.logdir)
+       templateconf = templateconf.replace("caslistenaddr", host)
+       templateconf = templateconf.replace("casnativeport", Cassandra.nativeport)
+       templateconf = templateconf.replace("casrpcaddr", Cassandra.rpcaddr)
+       templateconf = templateconf.replace("casrpcport", Cassandra.rpcport)
+       cassandraConf = '{0}/conf/cassandra.yaml'.format(Cassandra.casdir)
+       with open(cassandraConf, 'w') as f:
+          f.write(templateconf)
+          f.close()
+       copyToHost([host], cassandraConf)
+    
+    mkClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mkdir -p {0}".format(Cassandra.datadir), root=True)
+    mkClients.start()
+    mkClients.join()
+    time.sleep(2)
+    mntClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, Cassandra.datadir), root=True)
+    mntClients.start()
+    mntClients.join()
+    time.sleep(2)
+    mkClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mkdir -p {0}".format(Cassandra.logdir), root=True)
+    mkClients.start()
+    mkClients.join()
+    time.sleep(2)
+
+def startCassandra():
+    start_cas_cmd = "{0}/bin/cassandra".format(Cassandra.casdir)
+    for seed in Cassandra.master:
+      print "{0} : {1}".format(seed, start_cas_cmd)
+      os.system('ssh -A root@{0} {1}'.format(seed, start_cas_cmd))
+    print "waiting for seeds"
+    time.sleep(10)
+    for node in Cassandra.servers:
+      print "{0} : {1}".format(node, start_cas_cmd)
+      time.sleep(5)
+      os.system('ssh -A root@{0} {1}'.format(node, start_cas_cmd))
 
 if Storage.storage == Kudu:
     master_dir = Kudu.master_dir
@@ -193,6 +238,10 @@ elif Storage.storage == Hbase:
     startHdfs()
     startZk()
     startHbase()
+    exit(0)
+elif Storage.storage == Cassandra:
+    confCassandraCluster()
+    startCassandra()
     exit(0)
 
 mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
