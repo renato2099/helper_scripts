@@ -9,6 +9,7 @@ from ServerConfig import Storage
 from ServerConfig import Kudu
 from ServerConfig import TellStore
 from ServerConfig import Hbase
+from ServerConfig import Cassandra
 
 parser = ArgumentParser()
 parser.add_argument("-P", dest="load", help="Populate data", action="store_true")
@@ -38,6 +39,10 @@ elif Storage.storage == ServerConfig.Kudu:
 elif Storage.storage == ServerConfig.Hbase:
     serverArgs = '-cp {0}/conf -p table=usertable -p columnfamily=family -p clientbuffering=true -p hbase.usepagefilter=true'.format(Hbase.hbasedir)
     storage = "hbase10"
+elif Storage.storage == ServerConfig.Cassandra:
+    concat = lambda servers, sep: sep.join(servers)
+    serverArgs = '-p hosts="{0}"'.format(concat(Cassandra.master+Cassandra.servers,","))
+    storage = "cassandra2-cql"
 
 cmd = "cd {1}; PATH={0}:$PATH bin/ycsb {2} {3} -threads {4} -P {5} {6}".format(YCSB.mvnDir, YCSB.ycsbdir, command, storage, 1 if args.rt else YCSB.clientThreads, '{0}/workload'.format(os.path.dirname(os.path.realpath(__file__))), serverArgs)
 
