@@ -110,7 +110,7 @@ class YCSB:
     ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
-    clientThreads = 1 #32 * (len(servers0) + len(servers1))
+    clientThreads = 32 #32 * (len(servers0) + len(servers1))
 
 class YCSBWorkload:
     recordcount         = (len(Storage.servers) + len(Storage.master)) * 7500000
@@ -120,15 +120,15 @@ class YCSBWorkload:
     
     readallfields       = True
     
-    #readproportion      = 1
-    #updateproportion    = 0
-    #scanproportion      = 0
-    #insertproportion    = 0
-    
-    readproportion      = 0.4
-    updateproportion    = 0.3
+    readproportion      = 1
+    updateproportion    = 0
     scanproportion      = 0
-    insertproportion    = 0.3
+    insertproportion    = 0
+    
+    #readproportion      = 0.4
+    #updateproportion    = 0.3
+    #scanproportion      = 0
+    #insertproportion    = 0.3
     
     requestdistribution = "uniform"
 
@@ -170,10 +170,18 @@ class Aim:
     builddir      = General.builddir
 
 class Presto:    
-    coordinator    = 'euler05'
-    nodes          = ["euler06", "euler07", "euler08"]
+    coordinator    = 'euler10'
+    nodes          = ["euler11"]
     prestodir      = "/mnt/local/tell/presto"
-    nodememory     = 5
-    nodequery      = 3
-    jvmheap        = 20
-    jvmheapresgion = 10
+    datadir        = "/mnt/data/prestotmp"
+    querymaxmem    = "10GB"
+    querymaxnode   = "5GB"
+    jvmheap        = "32G" # java memory is specified differently than presto
+    jvmheapregion  = "32M"
+    httpport       = "8080"
+    loglevel       = "INFO"
+
+class Hive:
+    metastoreuri      = Presto.coordinator
+    metastoreport     = "9083"
+    metastoretimeout  = "1m"
