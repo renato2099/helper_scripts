@@ -20,10 +20,10 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler11']
+    servers    = ['euler09', 'euler11']
     servers1   = []
-    #master     = "euler10"
-    master     = ["euler10"]
+    master     = "euler10"
+    #master     = ["euler10"] #Cassandra can have more than one "master"
 
 class Kudu:
     clean       = True
@@ -64,7 +64,7 @@ class Hadoop:
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
     datadirSz      = "10"
-    dfsreplication = "3"
+    dfsreplication = "1"
 
 class Zookeeper:
     zkserver      = 'euler08'
@@ -94,7 +94,7 @@ class Cassandra:
     rpcaddr       = "0.0.0.0"
     rpcport       = '9160'
 
-Storage.storage = Cassandra
+Storage.storage = Hadoop
 
 class Tpcc:
     servers0      = ['euler02']
@@ -120,15 +120,10 @@ class YCSBWorkload:
     
     readallfields       = True
     
-    readproportion      = 1
-    updateproportion    = 0
+    readproportion      = 0.4
+    updateproportion    = 0.3
     scanproportion      = 0
-    insertproportion    = 0
-    
-    #readproportion      = 0.4
-    #updateproportion    = 0.3
-    #scanproportion      = 0
-    #insertproportion    = 0.3
+    insertproportion    = 0.3
     
     requestdistribution = "uniform"
 
@@ -171,7 +166,7 @@ class Aim:
 
 class Presto:    
     coordinator    = 'euler10'
-    nodes          = ["euler11"]
+    nodes          = ["euler11", "euler09"]
     prestodir      = "/mnt/local/tell/presto"
     datadir        = "/mnt/data/prestotmp"
     querymaxmem    = "10GB"
@@ -182,6 +177,10 @@ class Presto:
     loglevel       = "INFO"
 
 class Hive:
-    metastoreuri      = Presto.coordinator
+    master            = Presto.coordinator
+    hivedir           = "/mnt/local/tell/hive"
+    metastoreuri      = master
     metastoreport     = "9083"
     metastoretimeout  = "1m"
+    thriftport        = "10000"
+    thriftbindhost    = master

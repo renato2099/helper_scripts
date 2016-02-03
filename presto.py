@@ -7,17 +7,11 @@ from ServerConfig import Hadoop
 from ServerConfig import Presto
 from ServerConfig import Hive
 
-presto_start_cmd = '{0}/bin/stop-hbase.sh'.format(Presto.prestodir)
-
-xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
-
 concatStr = lambda servers, sep: sep.join(servers) 
 
 def copyToHost(hosts, path):
     for host in hosts:
         os.system('scp {0} root@{1}:{0}'.format(path, host))
-
-
     
 def confNode(host, coordinator = False):
     print "CONFIGURING {0}".format(host)
@@ -70,7 +64,6 @@ def confNode(host, coordinator = False):
     # tmp files for logging
     os.system("ssh root@{0} 'rm -rf {1}; mkdir {1}'".format(host, Presto.datadir))
     
-
 def confCluster():
     for host in Presto.nodes:
         confNode(host)
