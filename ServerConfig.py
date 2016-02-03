@@ -36,13 +36,13 @@ class TellStore:
     commitmanager      = Storage.master
     servers            = Storage.servers
     servers1           = Storage.servers1
-    approach           = "columnmap"
+    approach           = "rowstore"
     defaultMemorysize  = "0xD00000000" if approach == "logstructured" else "0xE00000000"
     defaultHashmapsize = "0x10000000" if approach == "logstructured" else "0x20000"
     memorysize         = defaultMemorysize # 0xC80000000 # 50G
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 30*1024*1024*1024 # 1GB
+    scanMemory         = 20*1024*1024*1024 # 1GB
     scanThreads        = 2
     gcInterval         = 20
 
@@ -158,15 +158,15 @@ class Spark:
 
 class Aim:
     sepservers0   = []
-    sepservers1   = TellStore.servers
-    rtaservers0   = ["euler06", 'euler07', 'euler08', 'euler09', 'euler10']
+    sepservers1   = ['euler11']
+    rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
     rtaservers1   = []
-    schemaFile    = General.sourceDir + "/watch/aim-benchmark/server/meta_db.db"
-    subscribers   = 20 * 1024 * 1024
+    schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
+    subscribers   = 10 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
     numSEPClients = 5
-    numRTAClients = 2
+    numRTAClients = 1
     builddir      = General.builddir
 
 class Presto:    
