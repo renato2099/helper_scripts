@@ -25,6 +25,9 @@ def confMaster():
     hiveSiteXml = "{0}/conf/hive-site.xml".format(Hive.hivedir)
     with open (hiveSiteXml, 'w+') as f:
          f.write("<configuration>\n")
+         f.write(xmlProp("hive.metastore.warehouse.dir", "/usr/hive/warehouse"))
+         #f.write(xmlProp("hive.metastore.uris", "thrift://{0}:{1}".format(Hive.thriftbindhost, Hive.thriftport)))
+         f.write(xmlProp("javax.jdo.option.ConnectionURL", "jdbc:derby:;databaseName={0}/metastore_db;".format(Hive.hivedir)))
          f.write(xmlProp("hive.server2.thrift.port", Hive.thriftport))
          f.write(xmlProp("hive.server2.thrift.bind.host", Hive.thriftbindhost))
          f.write("</configuration>\n")
@@ -32,20 +35,26 @@ def confMaster():
 
 def startHive():
     # metastore
-    start_hivems_cmd = "JAVA_HOME={1} {0}/bin/hive --service metastore &".format(Hive.hivedir, General.javahome)
-    os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hivems_cmd))
+    start_hivems_cmd = "JAVA_HOME={1} {0}/bin/hive --service metastore".format(Hive.hivedir, General.javahome)
+    print "{1} :{0}".format(start_hivems_cmd, Hive.master)
+    #os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hivems_cmd))
+    os.system('ssh -n -f root@{0} "sh -c \'{1} > /dev/null 2>&1 &\'"'.format(Hive.master, start_hivems_cmd))
     time.sleep(2)
     # hiveserver
-    start_hiveserver_cmd = "JAVA_HOME={1} {0}/bin/hive --service hiveserver2 &".format(Hive.hivedir, General.javahome)
-    os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hiveserver_cmd))
+    start_hiveserver_cmd = "JAVA_HOME={1} {0}/bin/hive --service hiveserver2".format(Hive.hivedir, General.javahome)
+    print "{1} : {0}".format(start_hiveserver_cmd, Hive.master)
+    #os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hiveserver_cmd))
+    os.system('ssh -n -f root@{0} "sh -c \'{1} > /dev/null 2>&1 &\'"'.format(Hive.master, start_hiveserver_cmd))
     time.sleep(2)
 
 def stopHive():
     stop_hivems_cmd = "ps -a | grep HiveMetaStore | grep -v grep | awk '{print $2}' | xargs kill -9"
+    print "{1} : {0}".format(stop_hivems_cmd, Hive.master)
     os.system('ssh -A root@{0} {1}'.format(Hive.master, stop_hivems_cmd))
     # hiveserver
     stop_hiveserver_cmd = "ps -a | grep HiverServer2 | grep -v grep | awk '{print $2}' | xargs kill -9"
     os.system('ssh -A root@{0} {1}'.format(Hive.master, stop_hiveserver_cmd))
+    print "{1} : {0}".format(stop_hiveserver_cmd, Hive.master)
 
 def main(argv):
     if ((len(argv) == 0) or (argv[0] == 'start')):

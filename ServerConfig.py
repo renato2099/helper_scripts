@@ -20,7 +20,7 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler09', 'euler11']
+    servers    = ['euler11', 'euler12', 'euler09']
     servers1   = []
     master     = "euler10"
     #master     = ["euler10"] #Cassandra can have more than one "master"
@@ -63,7 +63,7 @@ class Hadoop:
     datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
-    datadirSz      = "10"
+    datadirSz      = "100"
     dfsreplication = "1"
 
 class Zookeeper:
@@ -165,19 +165,19 @@ class Aim:
     builddir      = General.builddir
 
 class Presto:    
-    coordinator    = 'euler10'
-    nodes          = ["euler11", "euler09"]
+    coordinator    = 'euler08'
+    nodes          = ["euler01", "euler02"]
     prestodir      = "/mnt/local/tell/presto"
     datadir        = "/mnt/data/prestotmp"
-    querymaxmem    = "10GB"
-    querymaxnode   = "5GB"
-    jvmheap        = "32G" # java memory is specified differently than presto
+    querymaxmem    = "50GB"
+    querymaxnode   = "30GB"
+    jvmheap        = "100G" # java memory is specified differently than presto
     jvmheapregion  = "32M"
     httpport       = "8080"
     loglevel       = "INFO"
 
 class Hive:
-    master            = Presto.coordinator
+    master            = Storage.master
     hivedir           = "/mnt/local/tell/hive"
     metastoreuri      = master
     metastoreport     = "9083"

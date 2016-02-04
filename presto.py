@@ -14,7 +14,7 @@ def copyToHost(hosts, path):
         os.system('scp {0} root@{1}:{0}'.format(path, host))
     
 def confNode(host, coordinator = False):
-    print "CONFIGURING {0}".format(host)
+    print "\nCONFIGURING {0}".format(host)
     # node properties
     nodeProps = "{0}/etc/node.properties".format(Presto.prestodir)
     with open (nodeProps, 'w+') as f:
