@@ -18,7 +18,7 @@ def reduceComma(x, y):
     return x + ',' + y
 
 def addPort(x):
-    return x + ':8715'
+    return x + ':8715:8716'
 
 messageRate = Aim.messageRate // (Aim.numSEPClients * (len(Aim.sepservers0) + len(Aim.sepservers1)))
 
