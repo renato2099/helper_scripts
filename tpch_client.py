@@ -18,7 +18,10 @@ args = parser.parse_args()
 def reduceComma(x, y):
     return x + ',' + y
 
-def addPort(x):
+def addPort0(x):
+    return x + ':8713'
+
+def addPort1(x):
     return x + ':8712'
 
 cmd = '{0}/watch/tpch/tpch_client'.format(TellStore.builddir) 
@@ -30,7 +33,7 @@ if (args.populate):
     elif Tpch.storage == TellStore:
         cmd = cmd + ' "{0}" -x "{1}"'.format(TellStore.getServerList(), TellStore.getCommitManagerAddress())
 else:
-    cmd = cmd + ' -t {0} -o {1} -l {2} -d {3} -H "{4}" -c {5}'.format(Client.runTime, args.outfile, Client.logLevel, TpchWorkload.updateFiles, reduce(reduceComma, Tpch.servers0 + map(addPort, Tpch.servers1)), Client.numClients)
+    cmd = cmd + ' -t {0} -o {1} -l {2} -d {3} -H "{4}" -c {5}'.format(Client.runTime, args.outfile, Client.logLevel, TpchWorkload.updateFiles, reduce(reduceComma, map(addPort0,Tpch.servers0) + map(addPort1, Tpch.servers1)), Client.numClients)
 
 if Tpch.storage == Kudu:
     cmd = cmd + " -k"
