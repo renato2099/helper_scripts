@@ -20,9 +20,9 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler11', 'euler12', 'euler09']
-    servers1   = []
-    master     = "euler10"
+    servers    = ['euler08', 'euler09', 'euler10']
+    servers1   = servers
+    master     = "euler11"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 class Kudu:
@@ -45,6 +45,10 @@ class TellStore:
     scanMemory         = 20*1024*1024*1024 # 1GB
     scanThreads        = 2
     gcInterval         = 20
+
+    @staticmethod
+    def numServers():
+        return len(TellStore.servers) + len(TellStore.servers1)
 
     @staticmethod
     def getCommitManagerAddress():
@@ -94,7 +98,7 @@ class Cassandra:
     rpcaddr       = "0.0.0.0"
     rpcport       = '9160'
 
-Storage.storage = Hadoop
+Storage.storage = TellStore
 
 class Tpcc:
     servers0      = ['euler02']
@@ -136,7 +140,7 @@ class Tpch:
     builddir   = General.builddir
     server     = "euler12"
     client     = "euler12"
-    scaling    = 10
+    scaling    = 0.1
     dbgenFiles = '/mnt/SG/braunl-tpch-data/all/'
 
 class Spark:
@@ -165,16 +169,17 @@ class Aim:
     builddir      = General.builddir
 
 class Presto:    
-    coordinator    = 'euler08'
-    nodes          = ["euler01", "euler02"]
-    prestodir      = "/mnt/local/tell/presto"
-    datadir        = "/mnt/data/prestotmp"
-    querymaxmem    = "50GB"
-    querymaxnode   = "30GB"
-    jvmheap        = "100G" # java memory is specified differently than presto
-    jvmheapregion  = "32M"
-    httpport       = "8080"
-    loglevel       = "INFO"
+    coordinator      = 'euler08'
+    nodes            = ["euler01", "euler02"]
+    prestodir        = "/mnt/local/tell/presto"
+    datadir          = "/mnt/data/prestotmp"
+    querymaxmem      = "50GB"
+    querymaxnode     = "30GB"
+    jvmheap          = "100G" # java memory is specified differently than presto
+    jvmheapregion    = "32M"
+    httpport         = "8080"
+    loglevel         = "INFO"
+    splitsPerMachine = 8
 
 class Hive:
     master            = Storage.master

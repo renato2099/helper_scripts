@@ -6,13 +6,21 @@ from ServerConfig import General
 from ServerConfig import Hadoop
 from ServerConfig import Presto
 from ServerConfig import Hive
+from ServerConfig import TellStore
 
 concatStr = lambda servers, sep: sep.join(servers) 
 
 def copyToHost(hosts, path):
     for host in hosts:
         os.system('scp {0} root@{1}:{0}'.format(path, host))
-    
+
+def log2(n):
+    res = 0
+    while n > 0:
+        res += 1
+        n /= 2
+    return res
+
 def confNode(host, coordinator = False):
     print "\nCONFIGURING {0}".format(host)
     # node properties
@@ -49,12 +57,25 @@ def confNode(host, coordinator = False):
          f.write("discovery.uri=http://{0}:8080\n".format(Presto.coordinator))
     copyToHost([host], confProps)
     # catalog:
-    hiveCat = "{0}/etc/catalog/hive.properties".format(Presto.prestodir)
-    with open (hiveCat, 'w+') as f:
-         f.write("connector.name=hive-hadoop2\n")
-         f.write("hive.metastore.uri=thrift://{0}:{1}\n".format(Hive.metastoreuri, Hive.metastoreport))
-         f.write("hive.metastore-timeout={0}\n".format(Hive.metastoretimeout))
-    copyToHost([host], hiveCat)
+    if Storage.storage == Hadoop:
+        hiveCat = "{0}/etc/catalog/hive.properties".format(Presto.prestodir)
+        with open (hiveCat, 'w+') as f:
+             f.write("connector.name=hive-hadoop2\n")
+             f.write("hive.metastore.uri=thrift://{0}:{1}\n".format(Hive.metastoreuri, Hive.metastoreport))
+             f.write("hive.metastore-timeout={0}\n".format(Hive.metastoretimeout))
+        copyToHost([host], hiveCat)
+    elif Storage.storage == Tell:
+        tellCat = "{0}/etc/catalog/tell.properties".format(Presto.prestodir)
+        numChunks = Presto.splitsPerMachine * TellStore.numServers()
+        with open (hiveCat, 'w+') as f:
+            f.write('connector.name=tell')
+            f.write('tell.commitManager={0}'.format(TellStore.getCommitManagerAddress()))
+            f.write('tell.storages={0}'.format(TellStore.getServerList()))
+            f.write('tell.numPartitions={0}'.format(Presto.splitsPerMachine))
+            f.write('tell.partitionShift={0}'.format(log2(TellStore.numServers())))
+            f.write('tell.chunkCount={0}'.format(numChunks))
+            f.write('tell.chunkSize={0}'.format(((TellStore.scanMemory // numChunks) // 8) * 8))
+        copyToHost([host], tellCat)
     # log level
     logProps = "{0}/etc/log.properties".format(Presto.prestodir)
     f = open(logProps, 'w+')
