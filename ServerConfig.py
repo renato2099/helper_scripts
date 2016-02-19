@@ -111,11 +111,7 @@ class Hive:
 # Used Storage Implementation
 #############################
 
-<<<<<<< HEAD
 Storage.storage = TellStore
-=======
-Storage.storage = Kudu
->>>>>>> 7c87b19fb2358ad2f98cb3396f033d7dc369085c
 
 ###################
 # Processing Server
