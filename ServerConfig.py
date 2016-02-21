@@ -20,10 +20,14 @@ class General:
     javahome       = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler08', 'euler09', 'euler10']
+    servers    = ['euler07', 'euler08', 'euler10']
     servers1   = servers
     master     = "euler11"
     #master     = ["euler10"] #Cassandra can have more than one "master"
+
+##########################
+# Storage Implementations
+##########################
 
 class Kudu:
     clean       = True
@@ -37,14 +41,15 @@ class TellStore:
     servers            = Storage.servers
     servers1           = Storage.servers1
     approach           = "rowstore"
-    defaultMemorysize  = "0xD00000000" if approach == "logstructured" else "0xE00000000"
-    defaultHashmapsize = "0x10000000" if approach == "logstructured" else "0x20000"
-    memorysize         = defaultMemorysize # 0xC80000000 # 50G
+    defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
+    defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
+    memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 20*1024*1024*1024 # 1GB
     scanThreads        = 2
     gcInterval         = 20
+    scanShift          = 3
 
     @staticmethod
     def numServers():
@@ -98,7 +103,57 @@ class Cassandra:
     rpcaddr       = "0.0.0.0"
     rpcport       = '9160'
 
+class Hive:
+    master            = Storage.master
+    hivedir           = "/mnt/local/tell/hive"
+    metastoreuri      = master
+    metastoreport     = "9083"
+    metastoretimeout  = "1m"
+    thriftport        = "10000"
+    thriftbindhost    = master
+
+#############################
+# Used Storage Implementation
+#############################
+
 Storage.storage = TellStore
+
+###################
+# Processing Server
+###################
+
+class Java:
+    telljava       = General.builddir + "/telljava"
+    telljar        = telljava + "/telljava-1.0.jar"
+    javahome       = "/mnt/local/tell/java8"
+
+
+class Spark:
+    master         = 'euler11'
+    slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10']
+    sparkdir       = "/mnt/local/tell/spark"
+    telljava       = General.builddir + "/telljava"
+    telljar        = telljava + "/telljava-1.0.jar"
+    javahome       = "/mnt/local/tell/java8"
+    jarsDir        = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
+    tmpDir         = "/mnt/data/sparktmp"
+    numCores       = 8
+    tellPartitions = 48
+
+class Presto:    
+    coordinator      = 'euler04'
+    nodes            = ["euler01", "euler02"]
+    prestodir        = "/mnt/local/tell/presto"
+    localPresto      = "/mnt/local/mpilman/presto/presto-server-0.138-SNAPSHOT"
+    datadir          = "/mnt/data/prestotmp"
+    querymaxmem      = "50GB"
+    querymaxnode     = "30GB"
+    jvmheap          = "100G" # java memory is specified differently than presto
+    jvmheapregion    = "32M"
+    httpport         = "8080"
+    loglevel         = "INFO"
+    splitsPerMachine = 8
+    debug            = True
 
 class Tpcc:
     servers0      = ['euler02']
@@ -106,6 +161,20 @@ class Tpcc:
     warehouses    = 50
     storage       = Storage.storage
     builddir      = General.builddir
+
+class Tpch:
+    builddir      = General.builddir
+    servers0      = ["euler12"]
+    servers1      = []
+    clients       = ["euler12"]
+    storage       = Storage.storage
+    builddir      = General.builddir
+    scalingFactor = 1
+    @staticmethod
+    def getServerList():
+        serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
+        l = serversForList(Tpch.servers0, "8713") + serversForList(Tpch.servers1, "8712")
+        return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
 class YCSB:
     servers0      = Tpcc.servers0
@@ -115,6 +184,32 @@ class YCSB:
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
     clientThreads = 32 #32 * (len(servers0) + len(servers1))
+
+class Aim:
+    sepservers0   = []
+    sepservers1   = ['euler11']
+    rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
+    rtaservers1   = []
+    schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
+    subscribers   = 10 * 1024 * 1024
+    messageRate   = 20 * 1000
+    batchSize     = 5
+    numSEPClients = 5
+    numRTAClients = 1
+    builddir      = General.builddir
+
+#####################
+# Client and Workload
+#####################
+
+class Client:
+    numClients = 8
+    logLevel   = 'FATAL'
+    runTime    = 7*60
+
+class TpchWorkload:
+    dbgenFiles  = '/mnt/SG/braunl-tpch-data/all/{0}'.format(Tpch.scalingFactor)
+    updateFiles = '/mnt/SG/braunl-tpch-data/updates/{0}'.format(Tpch.scalingFactor)
 
 class YCSBWorkload:
     recordcount         = (len(Storage.servers) + len(Storage.master)) * 7500000
@@ -130,62 +225,3 @@ class YCSBWorkload:
     insertproportion    = 0.3
     
     requestdistribution = "uniform"
-
-class Client:
-    numClients = 8
-    logLevel   = 'FATAL'
-    runTime    = 7*60
-
-class Tpch:
-    builddir   = General.builddir
-    server     = "euler12"
-    client     = "euler12"
-    scaling    = 0.1
-    dbgenFiles = '/mnt/SG/braunl-tpch-data/all/'
-
-class Spark:
-    master         = 'euler11'
-    slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10']
-    sparkdir       = "/mnt/local/tell/spark"
-    telljava       = General.builddir + "/telljava"
-    telljar        = telljava + "/telljava-1.0.jar"
-    javahome       = "/mnt/local/tell/java8"
-    jarsDir        = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
-    tmpDir         = "/mnt/data/sparktmp"
-    numCores       = 8
-    tellPartitions = 48
-
-class Aim:
-    sepservers0   = []
-    sepservers1   = ['euler11']
-    rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
-    rtaservers1   = []
-    schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
-    subscribers   = 10 * 1024 * 1024
-    messageRate   = 20 * 1000
-    batchSize     = 5
-    numSEPClients = 5
-    numRTAClients = 1
-    builddir      = General.builddir
-
-class Presto:    
-    coordinator      = 'euler08'
-    nodes            = ["euler01", "euler02"]
-    prestodir        = "/mnt/local/tell/presto"
-    datadir          = "/mnt/data/prestotmp"
-    querymaxmem      = "50GB"
-    querymaxnode     = "30GB"
-    jvmheap          = "100G" # java memory is specified differently than presto
-    jvmheapregion    = "32M"
-    httpport         = "8080"
-    loglevel         = "INFO"
-    splitsPerMachine = 8
-
-class Hive:
-    master            = Storage.master
-    hivedir           = "/mnt/local/tell/hive"
-    metastoreuri      = master
-    metastoreport     = "9083"
-    metastoretimeout  = "1m"
-    thriftport        = "10000"
-    thriftbindhost    = master
