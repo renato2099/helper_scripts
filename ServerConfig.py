@@ -40,10 +40,10 @@ class TellStore:
     commitmanager      = Storage.master
     servers            = Storage.servers
     servers1           = Storage.servers1
-    approach           = "rowstore"
+    approach           = "columnmap"
     defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
     defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
-    memorysize         = defaultMemorysize
+    memorysize         = defaultMemorysize / 8
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 20*1024*1024*1024 # 1GB
