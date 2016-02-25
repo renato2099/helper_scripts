@@ -54,8 +54,8 @@ def confNode(host, coordinator = False):
          f.write("query.max-memory={0}\n".format(Presto.querymaxmem))
          f.write("query.max-memory-per-node={0}\n".format(Presto.querymaxnode))
          f.write("discovery.uri=http://{0}:8080\n".format(Presto.coordinator))
-         f.write("node-scheduler.max-splits-per-node={0}\n".format(Presto.splitsPerMachine - 1))
-         f.write("node-scheduler.max-pending-splits-per-node-per-task={0}\n".format(Presto.splitsPerMachine - 2))
+         f.write("node-scheduler.max-splits-per-node={0}\n".format(Presto.splitsPerMachine))
+         f.write("node-scheduler.max-pending-splits-per-node-per-task={0}\n".format(0))
     copyToHost([host], confProps)
     # catalog:
     if Storage.storage == Hadoop:

@@ -229,6 +229,7 @@ if Storage.storage == Kudu:
             for line in tservers_out[host]['stderr']:
                 print "{0}Host {1}: {2}".format(self.FAIL, host, line)
 elif Storage.storage == TellStore:
+    TellStore.rsyncBuild()
     master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
     server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
     numa1Args = '-p 7240'

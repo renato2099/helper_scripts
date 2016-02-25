@@ -1,4 +1,5 @@
 import getpass
+import os
 
 class General:
     infinibandIp = {
@@ -15,14 +16,15 @@ class General:
             'euler11': '192.168.0.21',
             'euler12': '192.168.0.22'
             }
-    sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
-    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
-    javahome       = "/mnt/local/tell/java8"
+    username     = getpass.getuser()
+    sourceDir    = "/mnt/local/{0}/tell".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
+    javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler07', 'euler08', 'euler10']
+    servers    = ['euler07', 'euler08']
     servers1   = servers
-    master     = "euler11"
+    master     = "euler10"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
@@ -43,7 +45,7 @@ class TellStore:
     approach           = "columnmap"
     defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
     defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
-    memorysize         = defaultMemorysize / 8
+    memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 20*1024*1024*1024 # 1GB
@@ -64,6 +66,14 @@ class TellStore:
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(General.infinibandIp[x], p), l)
         l = serversForList(TellStore.servers, "7241") + serversForList(TellStore.servers1, "7240")
         return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set([TellStore.commitmanager] + TellStore.servers + TellStore.servers1)
+        for host in hosts:
+            rsync(host)
+
 
 class Hadoop:
     namenode       = Storage.master
@@ -122,6 +132,29 @@ Storage.storage = TellStore
 # Processing Server
 ###################
 
+class Microbench:
+    servers0         = ['euler01', 'euler02', 'euler03']
+    servers1         = []
+    threads          = 1 if Storage.storage == TellStore else 4
+    networkThreads   = 3
+    numColumns       = 10
+    scaling          = 1
+    clientsPerThread = 8
+    clientThreads    = 4
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set(Microbench.servers0 + Microbench.servers1)
+        for host in hosts:
+            rsync(host)
+
+    @staticmethod
+    def getServerList():
+        serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
+        l = serversForList(Microbench.servers0, "8713") + serversForList(Microbench.servers1, "8712")
+        return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
+
 class Java:
     telljava       = General.builddir + "/telljava"
     telljar        = telljava + "/telljava-1.0.jar"
@@ -169,7 +202,7 @@ class Tpch:
     clients       = ["euler12"]
     storage       = Storage.storage
     builddir      = General.builddir
-    scalingFactor = 1
+    scalingFactor = 10
     @staticmethod
     def getServerList():
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
