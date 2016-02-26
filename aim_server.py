@@ -19,7 +19,7 @@ serverExec = ""
 if Storage.storage == Kudu:
     serverExec = "aim_kudu -P {0} -s {1}".format(len(Kudu.tservers) * 2, Kudu.master)
 elif Storage.storage == TellStore:
-    serverExec = 'aim_server -M {0} -m {1} -c "{2}" -s "{3}" --processing-threads 4'.format(numChunks, chunkSize, TellStore.getCommitManagerAddress(), TellStore.getServerList())
+    serverExec = 'aim_server -M {0} -m {1} -c "{2}" -s "{3}" --processing-threads {4}'.format(numChunks, chunkSize, TellStore.getCommitManagerAddress(), TellStore.getServerList(), Aim.serverthreads)
 
 cmd = '{0}/watch/aim-benchmark/{3} -f {1} -b {2}'.format(Aim.builddir, Aim.schemaFile, Aim.batchSize, serverExec)
 
