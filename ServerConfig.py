@@ -1,4 +1,5 @@
 import getpass
+import os
 
 class General:
     infinibandIp = {
@@ -15,14 +16,15 @@ class General:
             'euler11': '192.168.0.21',
             'euler12': '192.168.0.22'
             }
-    sourceDir     = "/mnt/local/{0}/tell".format(getpass.getuser())
-    builddir      = "/mnt/local/{0}/builddirs/tellrelease".format(getpass.getuser())
-    javahome       = "/mnt/local/tell/java8"
+    username     = getpass.getuser()
+    sourceDir    = "/mnt/local/{0}/tell".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
+    javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler01', 'euler03', 'euler04']
-    servers1   = []
-    master     = "euler02"
+    servers    = ['euler07', 'euler08']
+    servers1   = servers
+    master     = "euler10"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
@@ -43,12 +45,17 @@ class TellStore:
     approach           = "columnmap"
     defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
     defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
-    memorysize         = defaultMemorysize / 8
+    memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 20*1024*1024*1024 # 1GB
     scanThreads        = 2
     gcInterval         = 20
+    scanShift          = 3
+
+    @staticmethod
+    def numServers():
+        return len(TellStore.servers) + len(TellStore.servers1)
 
     @staticmethod
     def getCommitManagerAddress():
@@ -59,6 +66,14 @@ class TellStore:
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(General.infinibandIp[x], p), l)
         l = serversForList(TellStore.servers, "7241") + serversForList(TellStore.servers1, "7240")
         return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set([TellStore.commitmanager] + TellStore.servers + TellStore.servers1)
+        for host in hosts:
+            rsync(host)
+
 
 class Hadoop:
     namenode       = Storage.master
@@ -117,6 +132,35 @@ Storage.storage = TellStore
 # Processing Server
 ###################
 
+class Microbench:
+    servers0         = ['euler01', 'euler02', 'euler03']
+    servers1         = []
+    threads          = 1 if Storage.storage == TellStore else 4
+    networkThreads   = 3
+    numColumns       = 10
+    scaling          = 1
+    clientsPerThread = 8
+    clientThreads    = 4
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set(Microbench.servers0 + Microbench.servers1)
+        for host in hosts:
+            rsync(host)
+
+    @staticmethod
+    def getServerList():
+        serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
+        l = serversForList(Microbench.servers0, "8713") + serversForList(Microbench.servers1, "8712")
+        return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
+
+class Java:
+    telljava       = General.builddir + "/telljava"
+    telljar        = telljava + "/telljava-1.0.jar"
+    javahome       = "/mnt/local/tell/java8"
+
+
 class Spark:
     master         = 'euler11'
     slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10']
@@ -130,16 +174,19 @@ class Spark:
     tellPartitions = 48
 
 class Presto:    
-    coordinator    = 'euler08'
-    nodes          = ["euler01", "euler02"]
-    prestodir      = "/mnt/local/tell/presto"
-    datadir        = "/mnt/data/prestotmp"
-    querymaxmem    = "50GB"
-    querymaxnode   = "30GB"
-    jvmheap        = "100G" # java memory is specified differently than presto
-    jvmheapregion  = "32M"
-    httpport       = "8080"
-    loglevel       = "INFO"
+    coordinator      = 'euler04'
+    nodes            = ["euler01", "euler02"]
+    prestodir        = "/mnt/local/tell/presto"
+    localPresto      = "/mnt/local/mpilman/presto/presto-server-0.138-SNAPSHOT"
+    datadir          = "/mnt/data/prestotmp"
+    querymaxmem      = "50GB"
+    querymaxnode     = "30GB"
+    jvmheap          = "100G" # java memory is specified differently than presto
+    jvmheapregion    = "32M"
+    httpport         = "8080"
+    loglevel         = "INFO"
+    splitsPerMachine = 8
+    debug            = True
 
 class Tpcc:
     servers0      = ['euler02']
@@ -149,12 +196,18 @@ class Tpcc:
     builddir      = General.builddir
 
 class Tpch:
-    builddir    = General.builddir
-    servers0    = []
-    servers1    = ["euler03", "euler04"]
-    clients     = ["euler01"]
-    storage     = Storage.storage
-    builddir    = General.builddir
+    builddir      = General.builddir
+    servers0      = ["euler12"]
+    servers1      = []
+    clients       = ["euler12"]
+    storage       = Storage.storage
+    builddir      = General.builddir
+    scalingFactor = 10
+    @staticmethod
+    def getServerList():
+        serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
+        l = serversForList(Tpch.servers0, "8713") + serversForList(Tpch.servers1, "8712")
+        return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
 class YCSB:
     servers0      = Tpcc.servers0
@@ -188,8 +241,8 @@ class Client:
     runTime    = 7*60
 
 class TpchWorkload:
-    dbgenFiles  = '/mnt/SG/braunl-tpch-data/all/0.1'
-    updateFiles = '/mnt/SG/braunl-tpch-data/updates/0.1'
+    dbgenFiles  = '/mnt/SG/braunl-tpch-data/all/{0}'.format(Tpch.scalingFactor)
+    updateFiles = '/mnt/SG/braunl-tpch-data/updates/{0}'.format(Tpch.scalingFactor)
 
 class YCSBWorkload:
     recordcount         = (len(Storage.servers) + len(Storage.master)) * 7500000
