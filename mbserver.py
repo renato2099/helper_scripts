@@ -11,7 +11,7 @@ Microbench.rsyncBuild()
 
 if Storage.storage == TellStore:
     cmd = cmd.format("tell")
-    cmd += '-c "{0}" --storage "{1}", --network-threads {2}'.format(TellStore.getCommitManagerAddress(), TellStore.getServerList(), Microbench.networkThreads)
+    cmd += '-c "{0}" --storage "{1}" --network-threads {2}'.format(TellStore.getCommitManagerAddress(), TellStore.getServerList(), Microbench.networkThreads)
 elif Storage.storage == Kudu:
     cmd = cmd.format("kudu")
     cmd += '-c {0}'.format(Kudu.master)

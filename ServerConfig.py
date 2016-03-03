@@ -18,13 +18,13 @@ class General:
             }
     username     = getpass.getuser()
     sourceDir    = "/mnt/local/{0}/tell".format(username)
-    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellclang".format(username)
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler07', 'euler08']
-    servers1   = servers
-    master     = "euler10"
+    servers    = ['euler07', 'euler08', 'euler10']
+    servers1   = []
+    master     = "euler06"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
@@ -133,14 +133,15 @@ Storage.storage = TellStore
 ###################
 
 class Microbench:
-    servers0         = ['euler01', 'euler02', 'euler03']
-    servers1         = []
-    threads          = 1 if Storage.storage == TellStore else 4
-    networkThreads   = 3
-    numColumns       = 10
-    scaling          = 1
-    clientsPerThread = 8
-    clientThreads    = 4
+    servers0          = ['euler02']#, 'euler02', 'euler03']
+    servers1          = []#servers0 + TellStore.servers
+    threads           = 1 if Storage.storage == TellStore else 4
+    networkThreads    = 1
+    numColumns        = 10
+    scaling           = 1
+    clientsPerThread  = 1
+    clientThreads     = 1
+    analyticalClients = 0
 
     @staticmethod
     def rsyncBuild():
@@ -190,14 +191,21 @@ class Presto:
 
 class Tpcc:
     servers0      = ['euler02']
-    servers1      = [] + TellStore.servers
+    servers1      = []
     warehouses    = 50
     storage       = Storage.storage
     builddir      = General.builddir
 
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set(Tpcc.servers0 + TellStore.servers1)
+        for host in hosts:
+            rsync(host)
+
 class Tpch:
     builddir      = General.builddir
-    servers0      = ["euler12"]
+    servers0      = ["euler10"]
     servers1      = []
     clients       = ["euler12"]
     storage       = Storage.storage
