@@ -18,11 +18,11 @@ class General:
             }
     username     = getpass.getuser()
     sourceDir    = "/mnt/local/{0}/tell".format(username)
-    builddir     = "/mnt/local/{0}/builddirs/tellclang".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler07', 'euler08', 'euler10']
+    servers    = ['euler07']
     servers1   = []
     master     = "euler06"
     #master     = ["euler10"] #Cassandra can have more than one "master"
@@ -49,7 +49,7 @@ class TellStore:
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
     scanMemory         = 20*1024*1024*1024 # 1GB
-    scanThreads        = 2
+    scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3
 
@@ -133,15 +133,16 @@ Storage.storage = TellStore
 ###################
 
 class Microbench:
-    servers0          = ['euler02']#, 'euler02', 'euler03']
-    servers1          = []#servers0 + TellStore.servers
+    servers0          = ['euler02'] #, 'euler03', 'euler04', 'euler05']
+    servers1          = []
     threads           = 1 if Storage.storage == TellStore else 4
-    networkThreads    = 1
-    numColumns        = 10
-    scaling           = 1
+    networkThreads    = 3
+    numColumns        = 50
+    scaling           = 10
     clientsPerThread  = 1
-    clientThreads     = 1
-    analyticalClients = 0
+    clientThreads     = 4
+    analyticalClients = 1
+    result_dir        = '/mnt/local/mpilman/mbench_results'
 
     @staticmethod
     def rsyncBuild():

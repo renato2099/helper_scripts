@@ -7,11 +7,13 @@ from ServerConfig import TellStore
 from ServerConfig import Kudu
 from ServerConfig import Microbench
 
-default_out = "mbench"
+default_out = ""
 if Storage.storage == TellStore:
     default_out = "mbench_{0}".format(TellStore.approach)
 elif Storage.storage == Kudu:
     default_out = "mbench_kudu"
+
+default_out = '{0}/{1}_sf{2}_N{3}'.format(Microbench.result_dir, default_out, Microbench.scaling, Microbench.numColumns)
 
 parser = ArgumentParser()
 parser.add_argument("-P", dest='populate', help="Populate data", action="store_true")
