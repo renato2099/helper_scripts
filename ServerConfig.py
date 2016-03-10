@@ -137,8 +137,8 @@ class Microbench:
     servers1          = []
     threads           = 1 if Storage.storage == TellStore else 4
     networkThreads    = 3
-    numColumns        = 50
-    scaling           = 10
+    numColumns        = 10
+    scaling           = 50
     clientsPerThread  = 1
     clientThreads     = 4
     analyticalClients = 1
