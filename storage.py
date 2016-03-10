@@ -18,7 +18,8 @@ import logging
 logging.basicConfig()
 
 master = Storage.master
-servers = Storage.servers
+servers0 = Storage.servers
+servers1 = Storage.servers1
 master_cmd = ""
 server_cmd = ""
 
@@ -204,59 +205,64 @@ def startCassandra():
       time.sleep(5)
       os.system('ssh -A root@{0} {1}'.format(node, start_cas_cmd))
 
-if Storage.storage == Kudu:
-    master_dir = Kudu.master_dir
-    tserver_dir = Kudu.tserver_dir
 
-    master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
-    server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, master)
-    if Kudu.clean:
-        rmcommand = 'rm -rf {0}/*'
-        master_client = ParallelSSHClient([master], user="root")
-        output = master_client.run_command(rmcommand.format(master_dir))
-        tserver_client = ParallelSSHClient(servers, user="root")
-        tservers_out = tserver_client.run_command(rmcommand.format(tserver_dir))
-        for host in output:
-            for line in output[host]['stdout']:
-                print "Host {0}: {1}".format(host, line)
+def startStorageThreads(master_cmd, server_cmd, obs):
+    # TODO idea: change this to be full bloom processes not just threads
+    mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
+    mclient.start()
     
-            for line in output[host]['stderr']:
-                print "{0}Host {1}: {2}".format(self.FAIL, host, line)
-        for host in tservers_out:
-            for line in tservers_out[host]['stdout']:
-                print "Host {0}: {1}".format(host, line)
+    tclient = ThreadedClients(servers0, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
+    tclient.start()
     
-            for line in tservers_out[host]['stderr']:
-                print "{0}Host {1}: {2}".format(self.FAIL, host, line)
-elif Storage.storage == TellStore:
-    TellStore.rsyncBuild()
-    master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
-    server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
-    numa1Args = '-p 7240'
-elif Storage.storage == Hadoop:
-    startHdfs()
-    exit(0)
-elif Storage.storage == Hbase:
-    startHdfs()
-    startZk()
-    startHbase()
-    exit(0)
-elif Storage.storage == Cassandra:
-    confCassandraCluster()
-    startCassandra()
-    exit(0)
+    tclient2 = ThreadedClients(servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
+    tclient2.start()
+    
+    mclient.join()
+    tclient.join()
 
-mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd))
-mclient.start()
-
-tclient = ThreadedClients(servers, "numactl -m 0 -N 0 {0}".format(server_cmd))
-tclient.start()
-
-tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args))
-tclient2.start()
-
-mclient.join()
-tclient.join()
-tclient2.join()
-
-
+def startStorage(observers = []):
+    if Storage.storage == Kudu:
+        master_dir = Kudu.master_dir
+        tserver_dir = Kudu.tserver_dir
+    
+        master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
+        server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, master)
+        if Kudu.clean:
+            rmcommand = 'rm -rf {0}/*'
+            master_client = ParallelSSHClient([master], user="root")
+            output = master_client.run_command(rmcommand.format(master_dir))
+            tserver_client = ParallelSSHClient(servers, user="root")
+            tservers_out = tserver_client.run_command(rmcommand.format(tserver_dir))
+            for host in output:
+                for line in output[host]['stdout']:
+                    print "Host {0}: {1}".format(host, line)
+        
+                for line in output[host]['stderr']:
+                    print "{0}Host {1}: {2}".format(self.FAIL, host, line)
+            for host in tservers_out:
+                for line in tservers_out[host]['stdout']:
+                    print "Host {0}: {1}".format(host, line)
+        
+                for line in tservers_out[host]['stderr']:
+                    print "{0}Host {1}: {2}".format(self.FAIL, host, line)
+    elif Storage.storage == TellStore:
+        TellStore.rsyncBuild()
+        master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
+        server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
+        numa1Args = '-p 7240'
+    elif Storage.storage == Hadoop:
+        startHdfs()
+        exit(0)
+    elif Storage.storage == Hbase:
+        startHdfs()
+        startZk()
+        startHbase()
+        exit(0)
+    elif Storage.storage == Cassandra:
+        confCassandraCluster()
+        startCassandra()
+        exit(0)
+    startStorageThreads(master_cmd, server_cmd, observers)
+        
+if __name__ == "__main__":
+    startStorage()

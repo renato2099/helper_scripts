@@ -22,9 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler07']
+    servers    = ['euler11']
     servers1   = []
-    master     = "euler06"
+    master     = "euler10"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
@@ -48,7 +48,7 @@ class TellStore:
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 20*1024*1024*1024 # 1GB
+    scanMemory         = 2*1024*1024*1024 # 1GB
     scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3

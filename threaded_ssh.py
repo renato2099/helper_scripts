@@ -9,36 +9,52 @@ class Color:
     ENDC = '\033[0m'
 
 class OutputClient(Thread):
-    def __init__(self, host, out, prefix="", suffix=""):
+    def __init__(self, host, out, prefix="", suffix="", outObs=[]):
         Thread.__init__(self)
         self.host = host
         self.out = out
         self.prefix = prefix
         self.suffix = suffix
+        # registering
+        self.observers = outObs
 
     def run(self):
         for line in self.out:
             print "{0}Host {1}: {2}{3}".format(self.prefix, self.host, line, self.suffix)
+            self.notify_observers(self.host, line)
+
+    # observable methods
+    def register(self, observer): 
+        if not observer in self.observers:
+           self.observers.append(observer)
+    def unregister (self, observer):
+        if observer in self.observers:
+           self.observers.remove(observer)
+    def notify_observers(self, *args):
+#        print "qwert", self.observers
+        for obs in self.observers:
+          obs.notify(self, *args)
 
 
 class ChildClient(Thread):
-    def __init__(self, servers, cmd, asRoot = True):
+    def __init__(self, servers, cmd, asRoot = True, outputObservers=[]):
         Thread.__init__(self)
         if asRoot:
             self.client = ParallelSSHClient(servers, user="root")
         else:
             self.client = ParallelSSHClient(servers)
         self.cmd = cmd
+        self.observers = outputObservers
 
     def run(self):
         try:
             output = self.client.run_command(self.cmd)
             threads = []
             for host in output:
-                oThread = OutputClient(host, output[host]['stdout'])
+                oThread = OutputClient(host, output[host]['stdout'], outObs=self.observers)
                 oThread.start()
                 threads.append(oThread)
-                oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC)
+                oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC, outObs=self.observers)
                 oThread.start()
                 threads.append(oThread)
             for t in threads:
@@ -52,14 +68,14 @@ class ChildClient(Thread):
             ns.update(frame.f_locals)
             code.interact(local=ns)
 
-
 class ThreadedClients(Thread):
-    def __init__(self, servers, cmd, rnd_start=False, root=True):
+    def __init__(self, servers, cmd, rnd_start=False, root=True, observers=[]):
         Thread.__init__(self)
+
         self.children = []
         for server in servers:
             print "Create child for server {0} with command {1}".format(server, cmd)
-            self.children.append(ChildClient([server], cmd, asRoot=root))
+            self.children.append(ChildClient([server], cmd, asRoot=root, outputObservers=observers))
             self.rnd_start = rnd_start
 
     def run(self):
