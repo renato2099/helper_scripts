@@ -217,8 +217,7 @@ def startStorageThreads(master_cmd, server_cmd, obs):
     tclient2 = ThreadedClients(servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
     tclient2.start()
     
-    mclient.join()
-    tclient.join()
+    return [mclient, tclient, tclient2]
 
 def startStorage(observers = []):
     if Storage.storage == Kudu:
@@ -262,7 +261,7 @@ def startStorage(observers = []):
         confCassandraCluster()
         startCassandra()
         exit(0)
-    startStorageThreads(master_cmd, server_cmd, observers)
+    return startStorageThreads(master_cmd, server_cmd, observers)
         
 if __name__ == "__main__":
     startStorage()

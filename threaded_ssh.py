@@ -1,8 +1,10 @@
 from pssh import ParallelSSHClient
 from threading import Thread
 
+import traceback
 import time
 import random
+import sys
 
 class Color:
     FAIL = '\033[91m'
@@ -35,8 +37,8 @@ class OutputClient(Thread):
         for obs in self.observers:
           obs.notify(self, *args)
 
-
 class ChildClient(Thread):
+    nextPid = 0
     def __init__(self, servers, cmd, asRoot = True, outputObservers=[]):
         Thread.__init__(self)
         if asRoot:
@@ -46,9 +48,15 @@ class ChildClient(Thread):
         self.cmd = cmd
         self.observers = outputObservers
 
+    def kill(self):
+        self.client.run_command("cat {0} | xargs kill -9".format(self.pidFile))
+
     def run(self):
         try:
-            output = self.client.run_command(self.cmd)
+            thisPid = ChildClient.nextPid
+            ChildClient.nextPid += 1
+            self.pidFile = '/tmp/awesome_{0}.pid'.format(thisPid)
+            output = self.client.run_command("{0} & echo $! > {1}; wait < {1} ".format(self.cmd, self.pidFile))
             threads = []
             for host in output:
                 oThread = OutputClient(host, output[host]['stdout'], outObs=self.observers)
@@ -77,6 +85,10 @@ class ThreadedClients(Thread):
             print "Create child for server {0} with command {1}".format(server, cmd)
             self.children.append(ChildClient([server], cmd, asRoot=root, outputObservers=observers))
             self.rnd_start = rnd_start
+
+    def kill(self):
+        for child in self.children:
+            child.kill()
 
     def run(self):
         for child in self.children:

@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 from ServerConfig import General
+from ServerConfig import Storage
+from ServerConfig import Microbench
+from mbclient import startMBClient
 from storage import *
 from observer import *
 import time
@@ -9,18 +12,24 @@ import logging
 
 logging.basicConfig()
 
-# do as for many experiments we have to run
-## start storages
-stObserver = Observer("Initialize network server")
-startStorage([stObserver])
-# wait for notification that they have started
-#while (observer.semaphore  == 0):
+def runMBench():
+    # do as for many experiments we have to run
+    ## start storages
+    stObserver = Observer("Initialize network server")
+    clients = startStorage([stObserver])
+    # wait for notification that they have started
+    stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+    print "Storage started"
+    
+    ## start microbenchmark server
+    mbObserver = Observer("Started mbench server")
+    startMicrobenchmark(mbObserver)
+    mbObserver.waitFor(len(Microbench.servers0) + len(Microbench.servers1))
 
-## start microbenchmark server
-mbObserver = Observer("Microbenchmark started")
-#startMicrobenchmark(mbObserver)
-#while(mbObserver.isNotified)
+    startMBClient(True)
+    startMBClient()
+    
+    for client in clients:
+        client.kill()
 
-## wait for notification that it has started
-## start microbenchmark client
-#### this will block...
+runMBench()
