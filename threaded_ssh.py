@@ -23,9 +23,9 @@ class OutputClient(Thread):
     def run(self):
         for line in self.out:
             print "{0}Host {1}: {2}{3}".format(self.prefix, self.host, line, self.suffix)
+            sys.stdout.flush()
             self.notify_observers(self.host, line)
 
-    # observable methods
     def register(self, observer): 
         if not observer in self.observers:
            self.observers.append(observer)
@@ -33,7 +33,6 @@ class OutputClient(Thread):
         if observer in self.observers:
            self.observers.remove(observer)
     def notify_observers(self, *args):
-#        print "qwert", self.observers
         for obs in self.observers:
           obs.notify(self, *args)
 

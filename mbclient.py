@@ -24,15 +24,18 @@ def startMBClient(populate = False, uoutFile = None):
     while os.path.isfile(outfile + ".db"):
         appendFile = appendFile + 1
         outfile = "{0}_{1}".format(outfile, appendFile)
+
+    probabilities = "-i {0} -d {1} -u {2}".format(Microbench.insertProb, Microbench.deleteProb, Microbench.updateProb)
     
-    cmd = '{0}/watch/microbench/mbclient -H "{1}" -s {2} -c {3} -t {4} -a {5} -o {6}'.format(TellStore.builddir, Microbench.getServerList(), Microbench.scaling, Microbench.clientsPerThread, Microbench.clientThreads, Microbench.analyticalClients, outfile + ".db")
-    
+    cmd = '{0}/watch/microbench/mbclient -H "{1}" -s {2} -c {3} -t {4} -a {5} -o {6} {7}'.format(TellStore.builddir, Microbench.getServerList(), Microbench.scaling, Microbench.clientsPerServer, Microbench.clientThreads, Microbench.analyticalClients, outfile + ".db", probabilities)
+    if (Microbench.noWarmUp):
+        cmd += " --no-warmup"
     
     if (populate):
         cmd += ' -P'
     
     print "Execute {0}".format(cmd)
-    exit(os.system(cmd))
+    return os.system(cmd)
 
 if __name__ == "__main__":
     default_out = ''
@@ -41,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument("outfile", help="Result database", default=default_out, nargs='?')
     args = parser.parse_args()
     if (default_out != ''):
-        startMBClient(args.populate, default_out)
+        exit(startMBClient(args.populate, default_out))
     else:
-        startMBClient(args.populate)
+        exit(startMBClient(args.populate))
     

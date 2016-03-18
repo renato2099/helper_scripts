@@ -39,9 +39,6 @@ class Kudu:
     tserver_dir = '/mnt/data/kudu-tserver'
 
 class TellStore:
-    commitmanager      = Storage.master
-    servers            = Storage.servers
-    servers1           = Storage.servers1
     approach           = "columnmap"
     defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
     defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
@@ -55,24 +52,33 @@ class TellStore:
 
     @staticmethod
     def numServers():
-        return len(TellStore.servers) + len(TellStore.servers1)
+        return len(Storage.servers) + len(Storage.servers1)
 
     @staticmethod
     def getCommitManagerAddress():
-        return '{0}:7242'.format(General.infinibandIp[TellStore.commitmanager])
+        return '{0}:7242'.format(General.infinibandIp[Storage.master])
 
     @staticmethod
     def getServerList():
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(General.infinibandIp[x], p), l)
-        l = serversForList(TellStore.servers, "7241") + serversForList(TellStore.servers1, "7240")
+        l = serversForList(Storage.servers, "7241") + serversForList(Storage.servers1, "7240")
         return reduce(lambda x,y: '{0};{1}'.format(x,y), l)
 
     @staticmethod
     def rsyncBuild():
         rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
-        hosts = set([TellStore.commitmanager] + TellStore.servers + TellStore.servers1)
+        hosts = set([Storage.master] + Storage.servers + Storage.servers1)
         for host in hosts:
             rsync(host)
+
+    @staticmethod
+    def setDefaultMemorySize():
+        if TellStore.approach == "logstructured":
+            TellStore.memorysize = 0xD00000000
+            TellStore.hashmapsize = 0x10000000
+        else:
+            TellStore.memorysize = 0xE00000000
+            TellStore.hashmapsize = 0x20000
 
 
 class Hadoop:
@@ -133,15 +139,21 @@ Storage.storage = TellStore
 ###################
 
 class Microbench:
-    servers0          = ['euler02'] #, 'euler03', 'euler04', 'euler05']
+    servers0          = ['euler02', 'euler03', 'euler04']#, 'euler05']
     servers1          = []
     threads           = 1 if Storage.storage == TellStore else 4
     networkThreads    = 3
     numColumns        = 10
     scaling           = 50
-    clientsPerThread  = 1
+    clientsPerServer  = 10
     clientThreads     = 4
-    analyticalClients = 1
+    analyticalClients = 0
+    insertProb        = 0.166
+    deleteProb        = 0.166
+    updateProb        = 0.166
+    time              = 5
+    noWarmUp          = False
+    infinioBatch      = 16
     result_dir        = '/mnt/local/mpilman/mbench_results'
 
     @staticmethod

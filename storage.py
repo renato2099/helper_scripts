@@ -17,14 +17,6 @@ import logging
 
 logging.basicConfig()
 
-master = Storage.master
-servers0 = Storage.servers
-servers1 = Storage.servers1
-master_cmd = ""
-server_cmd = ""
-
-numa1Args = ''
-
 concatStr = lambda servers, sep: sep.join(servers)
 xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
 
@@ -207,14 +199,13 @@ def startCassandra():
 
 
 def startStorageThreads(master_cmd, server_cmd, obs):
-    # TODO idea: change this to be full bloom processes not just threads
-    mclient = ThreadedClients([master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
+    mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
     mclient.start()
     
-    tclient = ThreadedClients(servers0, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
+    tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
     tclient.start()
     
-    tclient2 = ThreadedClients(servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
+    tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, '-p 7240'), observers=obs)
     tclient2.start()
     
     return [mclient, tclient, tclient2]
