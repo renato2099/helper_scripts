@@ -12,6 +12,7 @@ from observer import *
 from functools import partial
 import time
 import os
+import sys
 
 import logging
 
@@ -25,11 +26,11 @@ def sqliteOut():
         print "Error: current storage not supported"
         exit(1)
     numStorages = len(Storage.servers) + len(Storage.servers1)
-    numClients = numStorages*Microbench.clientsPerServer
+    numMBServers = len(Microbench.servers0) + len(Microbench.servers1)
+    numClients = Microbench.clients
     numAnalytical = Microbench.analyticalClients
     res = "{0}_{1}storages_{2}clients_{3}scans".format(storage, numStorages, numClients, numAnalytical)
-    if Microbench.infinioBatch != 16:
-        res += "_{0}infinioBatch".format(Microbench.infinioBatch)
+    res += "_{0}infinioBatch".format(Microbench.infinioBatch)
     return res
 
 def runMBench(outdir, onlyPopulation = False):
@@ -47,7 +48,10 @@ def runMBench(outdir, onlyPopulation = False):
     mbObserver.waitFor(len(Microbench.servers0) + len(Microbench.servers1))
     print "Server started... Continue with population"
 
+    clients = Microbench.clients
+    Microbench.clients = 10*(len(Microbench.servers0) + len(Microbench.servers1)) - 1
     res = startMBClient(True, "{0}/{1}_population".format(outdir, sqliteOut()))
+    Microbench.clients = clients
     if res != 0:
         print "Population failed"
         exit(res)
@@ -72,9 +76,8 @@ def runMBench(outdir, onlyPopulation = False):
 
 def configForAnalytics():
     Microbench.analyticalClients = 1
-    Microbench.clientThreads = 1
-    Microbench.clientsPerServer = 1
-    Microbench.infinioBatch = 32
+    Microbench.clients = 0
+    Microbench.infinioBatch = 16
     if len(Microbench.servers0) > 0:
         Microbench.servers1 = []
         while len(Microbench.servers0) > 1:
@@ -83,7 +86,7 @@ def configForAnalytics():
 def configGetPut():
     Microbench.analyticalClients = 0
     Microbench.clientThreads = 4
-    Microbench.clientsPerServer = 10
+    Microbench.clients = 10*(len(Microbench.servers0) + len(Microbench.servers1)) - 1
     Microbench.threads = 1 if Storage.storage == TellStore else 4
     Microbench.insertProb = 0.166
     Microbench.updateProb = 0.166
@@ -128,12 +131,12 @@ def varyBatching(experiment, outdir):
     Microbench.infinioBatch = 16
 
 def scalingExperiment(experiment, outdir, numNodes):
-    Storage.master = 'euler01'
+    Storage.master = 'euler03'
     Storage.servers = []
-    servers = ['euler02', 'euler03', 'euler04', 'euler05']
+    servers = ['euler04', 'euler05', 'euler06', 'euler02']
     servers.reverse()
-    mservers0 = ['euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11']
-    mservers1 = servers + ['euler06', 'euler07', 'euler08', 'euler09', 'euler10', 'euler11'] 
+    mservers0 = ['euler07', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01']
+    mservers1 = servers + ['euler07', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01'] 
     mservers0.reverse()
     mservers1.reverse()
     Microbench.servers0 = []
@@ -149,78 +152,85 @@ def scalingExperiment(experiment, outdir, numNodes):
 
 def runOnTell(experiment, outdir, numNodes):
     Storage.storage = TellStore
-    for approach in ["columnmap", "rowstore"]:#, "logstructured"]:
+    for approach in ["columnmap"]: #["columnmap", "rowstore"]:#, "logstructured"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySize()
         for num in numNodes:
             experiment(outdir, num)
 
-def runBenchmarks(outdir):
-    if not os.path.isdir(outdir):
-        os.mkdir(outdir)
-    print "#######################################"
-    print " RUN EXPERIMENT 1a_singlebatch"
-    print "#######################################"
-    o = '{0}/experiment1a_singlebatch'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, experiment1a_singlebatch), o, [1,2,3,4])
-    print "#######################################"
-    print " RUN EXPERIMENT 1a"
-    print "#######################################"
-    o = '{0}/experiment1a'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, experiment1a), o, [1,2,3,4])
-    # Experiment 1b
-    print "#######################################"
-    print " RUN EXPERIMENT 1b"
-    print "#######################################"
-    o = '{0}/experiment1b'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
-    # Experiment 1c
-    # No experiment needed here (inserts are measured for all experiments)
-    # o = '{0}/experiment1c'.format(outdir)
-    # if os.path.isdir(o):
-    #     raise RuntimeError('{0} exists'.format(o))
-    # os.mkdir(o)
-    # runOnTell(partial(scalingExperiment, experiment1c), o, [1,2,3,4])
-    # Experiment 1d
-    print "#######################################"
-    print " RUN EXPERIMENT 1d"
-    print "#######################################"
-    o = '{0}/experiment1d'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
-    # Experiment 2a
-    print "#######################################"
-    print " RUN EXPERIMENT 2a"
-    print "#######################################"
-    o = '{0}/experiment2a'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, experiment2a), o, [1, 2, 3, 4])
-    # Experiment 3
-    print "#######################################"
-    print " RUN EXPERIMENT 3"
-    print "#######################################"
-    o = '{0}/experiment3'.format(outdir)
-    if os.path.isdir(o):
-        raise RuntimeError('{0} exists'.format(o))
-    os.mkdir(o)
-    runOnTell(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
+def runAllBenchmarks(outdir, experiments):
+    #print "#######################################"
+    #print " RUN EXPERIMENT 1a_singlebatch"
+    #print "#######################################"
+    #o = '{0}/experiment1a_singlebatch'.format(outdir)
+    #if os.path.isdir(o):
+    #    raise RuntimeError('{0} exists'.format(o))
+    #os.mkdir(o)
+    #runOnTell(partial(scalingExperiment, experiment1a_singlebatch), o, [1,2,3,4])
+    if len(experiments) == 0 or "experiment1a" in experiments:
+        print "#######################################"
+        print " RUN EXPERIMENT 1a"
+        print "#######################################"
+        o = '{0}/experiment1a'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOnTell(partial(scalingExperiment, experiment1a), o, [4,3,2,1])
+    if len(experiments) == 0 or "experiment1b" in experiments:
+        # Experiment 1b
+        print "#######################################"
+        print " RUN EXPERIMENT 1b"
+        print "#######################################"
+        o = '{0}/experiment1b'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOnTell(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
+    if len(experiments) == 0 or "experiment1c" in experiments:
+        # Experiment 1c
+        # No experiment needed here (inserts are measured for all experiments)
+        # o = '{0}/experiment1c'.format(outdir)
+        # if os.path.isdir(o):
+        #     raise RuntimeError('{0} exists'.format(o))
+        # os.mkdir(o)
+        # runOnTell(partial(scalingExperiment, experiment1c), o, [1,2,3,4])
+        # Experiment 1d
+        print "#######################################"
+        print " RUN EXPERIMENT 1d"
+        print "#######################################"
+        o = '{0}/experiment1d'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOnTell(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
+    if len(experiments) == 0 or "experiment2a" in experiments:
+        # Experiment 2a
+        print "#######################################"
+        print " RUN EXPERIMENT 2a"
+        print "#######################################"
+        o = '{0}/experiment2a'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOnTell(partial(scalingExperiment, experiment2a), o, [1, 2, 3, 4])
+    if len(experiments) == 0 or "experiment3" in experiments:
+        # Experiment 3
+        print "#######################################"
+        print " RUN EXPERIMENT 3"
+        print "#######################################"
+        o = '{0}/experiment3'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOnTell(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
 
 if __name__ == "__main__":
     out = 'results'
     parser = ArgumentParser()
-    parser.add_argument("-o", help="Output directory", default=out, nargs='?')
+    parser.add_argument("-o", help="Output directory", default=out)
+    parser.add_argument('experiments', metavar='E', type=str, nargs='*', help='Experiments to run (none defaults to all)')
     args = parser.parse_args()
-    runBenchmarks(out)
+    if not os.path.isdir(out):
+        os.mkdir(out)
+    runAllBenchmarks(out, args.experiments)
+

@@ -145,7 +145,7 @@ class Microbench:
     networkThreads    = 3
     numColumns        = 10
     scaling           = 50
-    clientsPerServer  = 10
+    clients           = 10
     clientThreads     = 4
     analyticalClients = 0
     insertProb        = 0.166
@@ -154,6 +154,7 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
+    txBatch           = 400
     result_dir        = '/mnt/local/mpilman/mbench_results'
 
     @staticmethod
