@@ -16,7 +16,7 @@ def startMBServer(observers):
         cmd += '-c "{0}" --storage "{1}" --network-threads {2} -m {3}'.format(TellStore.getCommitManagerAddress(), TellStore.getServerList(), Microbench.networkThreads, Microbench.infinioBatch)
     elif Storage.storage == Kudu:
         cmd = cmd.format("kudu")
-        cmd += '-c {0}'.format(Kudu.master)
+        cmd += '-c {0}'.format(Storage.master)
     
     client0 = ThreadedClients(Microbench.servers0, "numactl -m 0 -N 0 {0}".format(cmd), observers=observers)
     client1 = ThreadedClients(Microbench.servers1, "numactl -m 1 -N 1 {0} -p 8712".format(cmd), observers=observers)

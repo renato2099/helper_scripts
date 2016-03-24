@@ -216,12 +216,12 @@ def startStorage(observers = []):
         tserver_dir = Kudu.tserver_dir
     
         master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
-        server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, master)
+        server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, Storage.master)
         if Kudu.clean:
             rmcommand = 'rm -rf {0}/*'
-            master_client = ParallelSSHClient([master], user="root")
+            master_client = ParallelSSHClient([Storage.master], user="root")
             output = master_client.run_command(rmcommand.format(master_dir))
-            tserver_client = ParallelSSHClient(servers, user="root")
+            tserver_client = ParallelSSHClient(Storage.servers, user="root")
             tservers_out = tserver_client.run_command(rmcommand.format(tserver_dir))
             for host in output:
                 for line in output[host]['stdout']:

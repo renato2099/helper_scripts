@@ -22,9 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler11']
+    servers    = ['euler02', 'euler05', 'euler06']
     servers1   = []
-    master     = "euler10"
+    master     = "euler04"
     #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
@@ -33,8 +33,6 @@ class Storage:
 
 class Kudu:
     clean       = True
-    master      = Storage.master
-    tservers    = Storage.servers
     master_dir  = '/mnt/data/kudu-master'
     tserver_dir = '/mnt/data/kudu-tserver'
 
@@ -132,14 +130,14 @@ class Hive:
 # Used Storage Implementation
 #############################
 
-Storage.storage = TellStore
+Storage.storage = Kudu
 
 ###################
 # Processing Server
 ###################
 
 class Microbench:
-    servers0          = ['euler02', 'euler03', 'euler04']#, 'euler05']
+    servers0          = ['euler03', 'euler05', 'euler06']
     servers1          = []
     threads           = 1 if Storage.storage == TellStore else 4
     networkThreads    = 3
@@ -147,7 +145,7 @@ class Microbench:
     scaling           = 50
     clients           = 10
     clientThreads     = 4
-    analyticalClients = 0
+    analyticalClients = 1
     insertProb        = 0.166
     deleteProb        = 0.166
     updateProb        = 0.166
