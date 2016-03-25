@@ -152,7 +152,7 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 400
+    txBatch           = 200
     result_dir        = '/mnt/local/mpilman/mbench_results'
 
     @staticmethod
