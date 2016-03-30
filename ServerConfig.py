@@ -18,7 +18,7 @@ class General:
             }
     username     = getpass.getuser()
     sourceDir    = "/mnt/local/{0}/tell".format(username)
-    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellgcc".format(username)
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
@@ -154,6 +154,7 @@ class Microbench:
     infinioBatch      = 16
     txBatch           = 200
     result_dir        = '/mnt/local/mpilman/mbench_results'
+    onlyQ1            = True
 
     @staticmethod
     def rsyncBuild():

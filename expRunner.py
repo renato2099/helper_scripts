@@ -152,7 +152,7 @@ def scalingExperiment(experiment, outdir, numNodes):
 
 def runOnTell(experiment, outdir, numNodes):
     Storage.storage = TellStore
-    for approach in ["columnmap"]: #["columnmap", "rowstore"]:#, "logstructured"]:
+    for approach in ["rowstore"]: #["logstructured", "columnmap", "rowstore"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySize()
         for num in numNodes:
@@ -212,7 +212,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, experiment2a), o, [1, 2, 3, 4])
+        runOnTell(partial(scalingExperiment, experiment2a), o, [2])
     if len(experiments) == 0 or "experiment3" in experiments:
         # Experiment 3
         print "#######################################"
