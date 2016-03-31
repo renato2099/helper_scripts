@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os, sys, time
 from ServerConfig import General
+from ServerConfig import Storage
 from ServerConfig import Cassandra
 
 def execssh(hosts, cmd):
@@ -11,9 +12,9 @@ def execssh(hosts, cmd):
 
 #stop_cas_cmd = "ps -a | grep cassandra | grep -v grep | awk '{print $2}' | xargs kill -9 "
 stop_cas_cmd = "killall java"
-execssh(Cassandra.master + Cassandra.servers, stop_cas_cmd)
+execssh(Storage.servers, stop_cas_cmd)
 time.sleep(3)
-execssh(Cassandra.master + Cassandra.servers, "umount {0}".format(Cassandra.datadir))
-execssh(Cassandra.master + Cassandra.servers, "rm -r {0}".format(Cassandra.datadir))
-execssh(Cassandra.master + Cassandra.servers, "rm -r {0}".format(Cassandra.logdir))
+execssh(Storage.servers, "umount {0}".format(Cassandra.datadir))
+execssh(Storage.servers, "rm -r {0}".format(Cassandra.datadir))
+execssh(Storage.servers, "rm -r {0}".format(Cassandra.logdir))
 

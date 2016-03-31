@@ -39,7 +39,8 @@ def runMBench(outdir, onlyPopulation = False):
     stObserver = Observer("Initialize network server")
     storageClients = startStorage([stObserver])
     # wait for notification that they have started
-    stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+    if Storage.storage == TellStore:
+    	stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
     print "Storage started"
     
     ## start microbenchmark server
@@ -151,12 +152,15 @@ def scalingExperiment(experiment, outdir, numNodes):
     experiment(outdir)
 
 def runOnTell(experiment, outdir, numNodes):
-    Storage.storage = TellStore
     for approach in ["rowstore"]: #["logstructured", "columnmap", "rowstore"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySize()
         for num in numNodes:
             experiment(outdir, num)
+
+def runOnCassandra(experiment, outdir, numNodes):
+    for num in numNodes:
+       experiment(outdir,num)
 
 def runAllBenchmarks(outdir, experiments):
     #print "#######################################"
@@ -167,6 +171,11 @@ def runAllBenchmarks(outdir, experiments):
     #    raise RuntimeError('{0} exists'.format(o))
     #os.mkdir(o)
     #runOnTell(partial(scalingExperiment, experiment1a_singlebatch), o, [1,2,3,4])
+
+    if Storage.storage == TellStore:
+        runOn = runOnTell
+    elif Storage.storage == Cassandra:
+        runOn = runOnCassandra
     if len(experiments) == 0 or "experiment1a" in experiments:
         print "#######################################"
         print " RUN EXPERIMENT 1a"
@@ -175,7 +184,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, experiment1a), o, [4,3,2,1])
+        runOn(partial(scalingExperiment, experiment1a), o, [1])
     if len(experiments) == 0 or "experiment1b" in experiments:
         # Experiment 1b
         print "#######################################"
@@ -185,7 +194,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
+        runOn(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment1c" in experiments:
         # Experiment 1c
         # No experiment needed here (inserts are measured for all experiments)
@@ -202,7 +211,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
+        runOn(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
     if len(experiments) == 0 or "experiment2a" in experiments:
         # Experiment 2a
         print "#######################################"
@@ -212,7 +221,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, experiment2a), o, [2])
+        runOn(partial(scalingExperiment, experiment2a), o, [2])
     if len(experiments) == 0 or "experiment3" in experiments:
         # Experiment 3
         print "#######################################"
@@ -222,7 +231,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOnTell(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
+        runOn(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
 
 if __name__ == "__main__":
     out = 'results'

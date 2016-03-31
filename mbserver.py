@@ -16,17 +16,17 @@ def startMBServer(observers):
     params = '-t {0} -n {1} -s {2} '.format(Microbench.threads, Microbench.numColumns, Microbench.scaling)
 
     if Storage.storage == TellStore:
-        cmd = '{0}/watch/microbench/mbserver_{1} {2}'.format(TellStore.builddir, "tell", params)
+        cmd = '{0}/watch/microbench/mbserver_tell {1}'.format(TellStore.builddir, params)
         cmd += '-c "{0}" --storage "{1}" --network-threads {2} -m {3}'.format(TellStore.getCommitManagerAddress(), TellStore.getServerList(), Microbench.networkThreads, Microbench.infinioBatch)
     elif Storage.storage == Kudu:
-        cmd = '{0}/watch/microbench/mbserver_{1} {2}'.format(TellStore.builddir, "kudu", params)
+        cmd = '{0}/watch/microbench/mbserver_kudu {1}'.format(TellStore.builddir, params)
         cmd += '-c {0}'.format(Storage.master)
     elif Storage.storage == Cassandra:
         Microbench.rsyncJars()
-        cmd ='PATH={0}/bin:$PATH java -jar {1}/mbserver_{2} {3}'.format(General.javahome, Microbench.javaDir, "cassandra.jar", params)
-        cmd += getNodes([Cassandra.master]+Cassandra.servers, " -cn ")
+        cmd ='PATH={0}/bin:$PATH java -jar {1}/mbserver_cassandra.jar {2}'.format(General.javahome, Microbench.javaDir, params)
+        cmd += getNodes(Storage.servers, " -cn ")
     elif Storage.storage == Hbase:
-        cmd ='PATH={0}/bin:$PATH java -jar {0}/mbserver_{1} {3}'.format(General.javahome, Microbench.javaDir, "hbase.jar", params)
+        cmd ='PATH={0}/bin:$PATH java -jar {1}/mbserver_hbase.jar {2}'.format(General.javahome, Microbench.javaDir, params)
   
     client0 = ThreadedClients(Microbench.servers0, "numactl -m 0 -N 0 {0}".format(cmd), observers=observers)
     client1 = ThreadedClients(Microbench.servers1, "numactl -m 1 -N 1 {0} -p 8712".format(cmd), observers=observers)

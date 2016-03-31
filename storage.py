@@ -154,12 +154,12 @@ def startHdfs():
 
 def confCassandraCluster():
     templateconf = None
-    allServers = Cassandra.servers + Cassandra.master
+    allServers = Storage.servers 
     for host in allServers:
        f = open('cassandra.yaml.template', 'r')
        templateconf = f.read()
        f.close()
-       templateconf = templateconf.replace("casseeds", "\"" + concatStr(Cassandra.master,',') + "\"")
+       templateconf = templateconf.replace("casseeds", "\"" + allServers[0] + "\"")
        templateconf = templateconf.replace("casdatadir", Cassandra.datadir)
        templateconf = templateconf.replace("caslogdir", Cassandra.logdir)
        templateconf = templateconf.replace("caslistenaddr", host)
@@ -172,31 +172,30 @@ def confCassandraCluster():
           f.close()
        copyToHost([host], cassandraConf)
     
-    mkClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mkdir -p {0}".format(Cassandra.datadir), root=True)
+    mkClients = ThreadedClients(allServers, "mkdir -p {0}".format(Cassandra.datadir), root=True)
     mkClients.start()
     mkClients.join()
     time.sleep(2)
-    mntClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, Cassandra.datadir), root=True)
+    mntClients = ThreadedClients(allServers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, Cassandra.datadir), root=True)
     mntClients.start()
     mntClients.join()
     time.sleep(2)
-    mkClients = ThreadedClients(Cassandra.servers + Cassandra.master, "mkdir -p {0}".format(Cassandra.logdir), root=True)
+    mkClients = ThreadedClients(allServers , "mkdir -p {0}".format(Cassandra.logdir), root=True)
     mkClients.start()
     mkClients.join()
     time.sleep(2)
 
 def startCassandra():
     start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra".format(Cassandra.casdir)
-    for seed in Cassandra.master:
-      print "{0} : {1}".format(seed, start_cas_cmd)
-      os.system('ssh -A root@{0} {1}'.format(seed, start_cas_cmd))
+    seed = Storage.servers[0]
+    print "{0} : {1}".format(seed, start_cas_cmd)
+    os.system('ssh -A root@{0} {1}'.format(seed, start_cas_cmd))
     print "waiting for seeds"
     time.sleep(10)
-    for node in Cassandra.servers:
+    for node in Storage.servers[1:]:
       print "{0} : {1}".format(node, start_cas_cmd)
       time.sleep(5)
       os.system('ssh -A root@{0} {1}'.format(node, start_cas_cmd))
-
 
 def startStorageThreads(master_cmd, server_cmd, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
@@ -250,8 +249,7 @@ def startStorage(observers = []):
         exit(0)
     elif Storage.storage == Cassandra:
         confCassandraCluster()
-        startCassandra()
-        exit(0)
+        return []
     return startStorageThreads(master_cmd, server_cmd, observers)
         
 if __name__ == "__main__":

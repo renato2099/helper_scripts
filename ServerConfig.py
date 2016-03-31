@@ -22,7 +22,7 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler04', 'euler02', 'euler05', 'euler06']
+    servers    = ['euler04']
     servers1   = []
     master     = "euler04"
 
@@ -105,12 +105,10 @@ class Hbase:
     zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
-    master        = Storage.servers[0]
-    servers       = Storage.servers[1:]
     casdir        = "/mnt/local/tell/cassandra"
     logdir        = "/mnt/data/cassandra/cass_log"
     datadir       = "/mnt/ramfs/cassandra/cass_data"
-    datadirSz     = 100
+    datadirSz     = 50
     listenaddr    = ""
     nativeport    = '9042'
     rpcaddr       = "0.0.0.0"
@@ -136,7 +134,7 @@ Storage.storage = Cassandra
 ###################
 
 class Microbench:
-    servers0          = ['euler03', 'euler05', 'euler06']
+    servers0          = ['euler06', 'euler07']
     servers1          = []
     threads           = 1 if Storage.storage == TellStore else 4
     networkThreads    = 3
@@ -152,9 +150,9 @@ class Microbench:
     noWarmUp          = False
     infinioBatch      = 16
     txBatch           = 200
-    result_dir        = '/mnt/local/mpilman/mbench_results'
+    result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     onlyQ1            = True
-    javaDir           = '/mnt/local/{0}/jars'.format(General.username)
+    javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 
     @staticmethod
     def rsyncJars():
