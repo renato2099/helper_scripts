@@ -22,10 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler02', 'euler05', 'euler06']
+    servers    = ['euler04', 'euler02', 'euler05', 'euler06']
     servers1   = []
     master     = "euler04"
-    #master     = ["euler10"] #Cassandra can have more than one "master"
 
 ##########################
 # Storage Implementations
@@ -106,8 +105,8 @@ class Hbase:
     zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
-    servers       = Storage.servers
-    master        = Storage.master
+    master        = Storage.servers[0]
+    servers       = Storage.servers[1:]
     casdir        = "/mnt/local/tell/cassandra"
     logdir        = "/mnt/data/cassandra/cass_log"
     datadir       = "/mnt/ramfs/cassandra/cass_data"
@@ -130,7 +129,7 @@ class Hive:
 # Used Storage Implementation
 #############################
 
-Storage.storage = Kudu
+Storage.storage = Cassandra
 
 ###################
 # Processing Server
@@ -155,6 +154,16 @@ class Microbench:
     txBatch           = 200
     result_dir        = '/mnt/local/mpilman/mbench_results'
     onlyQ1            = True
+    javaDir           = '/mnt/local/{0}/jars'.format(General.username)
+
+    @staticmethod
+    def rsyncJars():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(Microbench.javaDir, General.username, host))
+        mkjavadir = lambda host: os.system('ssh -A {1}@{2} mkdir -p {0}'.format(Microbench.javaDir, General.username, host))
+        hosts = set(Microbench.servers0 + Microbench.servers1)
+        for host in hosts:
+            mkjavadir(host)
+            rsync(host)
 
     @staticmethod
     def rsyncBuild():
@@ -182,7 +191,7 @@ class Spark:
     telljava       = General.builddir + "/telljava"
     telljar        = telljava + "/telljava-1.0.jar"
     javahome       = "/mnt/local/tell/java8"
-    jarsDir        = "/mnt/local/{0}/spark_jars".format(getpass.getuser())
+    jarsDir        = "/mnt/local/{0}/spark_jars".format(General.username)
     tmpDir         = "/mnt/data/sparktmp"
     numCores       = 8
     tellPartitions = 48
@@ -234,7 +243,7 @@ class YCSB:
     servers0      = Tpcc.servers0
     servers1      = Tpcc.servers1
     builddir      = General.builddir
-    ycsbdir       = "/mnt/local/{0}/YCSB".format(getpass.getuser())
+    ycsbdir       = "/mnt/local/{0}/YCSB".format(General.username)
     mvnDir        = "/mnt/local/tell/apache-maven-3.3.9/bin"
     networkThread = 4
     clientThreads = 32 #32 * (len(servers0) + len(servers1))

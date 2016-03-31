@@ -9,8 +9,8 @@ def execssh(hosts, cmd):
         print "{0}: {1}".format(host, cmd)
         os.system('ssh -A root@{0} {1}'.format(host, cmd))
 
-stop_cas_cmd = "ps -a | grep cassandra | grep -v grep | awk '{print $2}' | xargs kill -9 "
-#stop_cas_cmd = "killall java"
+#stop_cas_cmd = "ps -a | grep cassandra | grep -v grep | awk '{print $2}' | xargs kill -9 "
+stop_cas_cmd = "killall java"
 execssh(Cassandra.master + Cassandra.servers, stop_cas_cmd)
 time.sleep(3)
 execssh(Cassandra.master + Cassandra.servers, "umount {0}".format(Cassandra.datadir))

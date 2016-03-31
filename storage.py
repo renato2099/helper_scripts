@@ -186,7 +186,7 @@ def confCassandraCluster():
     time.sleep(2)
 
 def startCassandra():
-    start_cas_cmd = "{0}/bin/cassandra".format(Cassandra.casdir)
+    start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra".format(Cassandra.casdir)
     for seed in Cassandra.master:
       print "{0} : {1}".format(seed, start_cas_cmd)
       os.system('ssh -A root@{0} {1}'.format(seed, start_cas_cmd))
