@@ -13,6 +13,7 @@ getNodes = lambda l, o: o + o.join(l)
 def startMBServer(observers):
 
     Microbench.rsyncBuild()
+    path = ""
     params = '-t {0} -n {1} -s {2} '.format(Microbench.threads, Microbench.numColumns, Microbench.scaling)
 
     if Storage.storage == TellStore:
@@ -23,13 +24,15 @@ def startMBServer(observers):
         cmd += '-c {0}'.format(Storage.master)
     elif Storage.storage == Cassandra:
         Microbench.rsyncJars()
-        cmd ='PATH={0}/bin:$PATH java -jar {1}/mbserver_cassandra.jar {2}'.format(General.javahome, Microbench.javaDir, params)
+        path = "PATH={0}/bin:$PATH ".format(General.javahome)
+        cmd ='java -jar {0}/mbserver_cassandra.jar {1}'.format(Microbench.javaDir, params)
         cmd += getNodes(Storage.servers, " -cn ")
     elif Storage.storage == Hbase:
-        cmd ='PATH={0}/bin:$PATH java -jar {1}/mbserver_hbase.jar {2}'.format(General.javahome, Microbench.javaDir, params)
+        path = "PATH={0}/bin:$PATH ".format(General.javahome)
+        cmd ='java -jar {0}/mbserver_hbase.jar {1}'.format(Microbench.javaDir, params)
   
-    client0 = ThreadedClients(Microbench.servers0, "numactl -m 0 -N 0 {0}".format(cmd), observers=observers)
-    client1 = ThreadedClients(Microbench.servers1, "numactl -m 1 -N 1 {0} -p 8712".format(cmd), observers=observers)
+    client0 = ThreadedClients(Microbench.servers0, "{0}numactl -m 0 -N 0 {1}".format(path, cmd), observers=observers)
+    client1 = ThreadedClients(Microbench.servers1, "{0}numactl -m 1 -N 1 {1} -p 8712".format(path, cmd), observers=observers)
     
     client0.start()
     client1.start()

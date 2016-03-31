@@ -22,6 +22,8 @@ def sqliteOut():
     storage = ''
     if Storage.storage == TellStore:
         storage = "tellstore_{0}".format(TellStore.approach)
+    elif Storage.storage == Cassandra:
+        storage = "cassandra"
     else:
         print "Error: current storage not supported"
         exit(1)
