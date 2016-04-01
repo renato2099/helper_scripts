@@ -13,6 +13,8 @@ def startMBClient(populate = False, uoutFile = None):
         default_out = "mbench_{0}".format(TellStore.approach)
     elif Storage.storage == Kudu:
         default_out = "mbench_kudu"
+    elif Storage.storage == Cassandra:
+        default_out = "mbench_cassandra"
     
     default_out = '{0}/{1}_sf{2}_N{3}'.format(Microbench.result_dir, default_out, Microbench.scaling, Microbench.numColumns)
     

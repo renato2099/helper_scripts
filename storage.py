@@ -249,6 +249,7 @@ def startStorage(observers = []):
         exit(0)
     elif Storage.storage == Cassandra:
         confCassandraCluster()
+        startCassandra()
         return []
     return startStorageThreads(master_cmd, server_cmd, observers)
         
