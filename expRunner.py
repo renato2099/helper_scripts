@@ -77,6 +77,9 @@ def runMBench(outdir, onlyPopulation = False):
     for client in storageClients:
         client.join()
 
+    if (Storage.storage == Cassandra):
+        os.system('./stop_cas.py')
+
 def configForAnalytics():
     Microbench.analyticalClients = 1
     Microbench.clients = 0
@@ -186,7 +189,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment1a), o, [1])
+        runOn(partial(scalingExperiment, experiment1a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment1b" in experiments:
         # Experiment 1b
         print "#######################################"

@@ -18,7 +18,7 @@ class General:
             }
     username     = getpass.getuser()
     sourceDir    = "/mnt/local/{0}/tell".format(username)
-    builddir     = "/mnt/local/{0}/builddirs/tellgcc".format(username)
+    builddir     = "/mnt/local/{0}/builddirs/tellrelease".format(username)
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
@@ -149,7 +149,7 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 200
+    txBatch           = 50
     result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     onlyQ1            = True
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)

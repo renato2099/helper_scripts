@@ -58,9 +58,9 @@ batch_size_fail_threshold_in_kb: 50
 compaction_throughput_mb_per_sec: 16
 compaction_large_partition_warning_threshold_mb: 100
 sstable_preemptive_open_interval_in_mb: 50
-read_request_timeout_in_ms: 5000
+read_request_timeout_in_ms: 120000
 range_request_timeout_in_ms: 10000
-write_request_timeout_in_ms: 2000
+write_request_timeout_in_ms: 120000
 counter_write_request_timeout_in_ms: 5000
 cas_contention_timeout_in_ms: 1000
 truncate_request_timeout_in_ms: 60000
