@@ -5,6 +5,7 @@ from threaded_ssh import ThreadedClients
 from ServerConfig import Storage
 from ServerConfig import TellStore
 from ServerConfig import Kudu
+from ServerConfig import Cassandra
 from ServerConfig import Microbench
 
 def startMBClient(populate = False, uoutFile = None):
