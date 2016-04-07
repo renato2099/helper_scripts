@@ -14,10 +14,15 @@ from stop_java_unmount_memfs import stop_java_unmount_memfs
 import time
 import os
 import sys
+import signal
 
 import logging
 
 logging.basicConfig()
+
+def exitGracefully(signal, frame):
+    stop_java_unmount_memfs()
+    sys.exit(0)
 
 def sqliteOut():
     storage = Storage.storage.__class__.__name__.lower()
@@ -248,6 +253,7 @@ def runAllBenchmarks(outdir, experiments):
         runOn(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, exitGracefully)
     out = 'results'
     parser = ArgumentParser()
     parser.add_argument("-o", help="Output directory", default=out)
