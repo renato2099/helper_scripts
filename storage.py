@@ -199,14 +199,23 @@ def startCassandra(start_cas_cmd, obs):
 
     return [seedClient, nodeClients]
 
-def startStorageThreads(master_cmd, server_cmd, obs):
+def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
     mclient.start()
+
+    # If storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
+    if (Storage.storage != Tell):
+        time.sleep(2)
     
     tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
     tclient.start()
     
-    tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, '-p 7240'), observers=obs)
+    # If storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
+    if (Storage.storage != Tell):
+        time.sleep(2)
+
+    # servers1 should only exist for Tell, nobody else
+    tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
     tclient2.start()
     
     return [mclient, tclient, tclient2]
@@ -218,6 +227,7 @@ def startStorage(observers = []):
     
         master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
         server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, Storage.master)
+        numa1Args = "--rpc_bind_addresses=0.0.0.0:7049"
         if Kudu.clean:
             rmcommand = 'rm -rf {0}/*'
             master_client = ParallelSSHClient([Storage.master], user="root")
@@ -253,7 +263,7 @@ def startStorage(observers = []):
         confCassandraCluster()
         start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra -f".format(Cassandra.casdir)
         return startCassandra(start_cas_cmd, observers)
-    return startStorageThreads(master_cmd, server_cmd, observers)
+    return startStorageThreads(master_cmd, server_cmd, numa1Args, observers)
         
 if __name__ == "__main__":
     startStorage()
