@@ -85,10 +85,14 @@ def confHbase():
     prepHbaseEnv()
 
 def startHbase():
-    start_hbase_cmd = "JAVA_HOME={1} {0}/bin/start-hbase.sh foreground_start".format(Hbase.hbasedir, General.javahome)
-    hbaseClient = ThreadedClients([Hbase.hmaster], start_hbase_cmd, root=True)
-    hbaseClient.start()
-    return hbaseClient
+    master_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
+    masterClient = ThreadedClients([Hbase.hmaster], master_cmd, root=True)
+    masterClient.start()
+
+    region_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
+    regionClients= ThreadedClients(Hbase.hregions, region_cmd, root=True)
+    regionClients.start()
+    return masterClient + regionClients
 
 def confHdfs():
     mkClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
