@@ -10,7 +10,7 @@ from mbserver import startMBServer
 from storage import *
 from observer import *
 from functools import partial
-from stop_cas import stop_cassandra
+from stop_java_unmount_memfs import stop_java_unmount_memfs
 import time
 import os
 import sys
@@ -86,8 +86,8 @@ def runMBench(outdir, onlyPopulation = False):
     for client in storageClients:
         client.join()
 
-    if (Storage.storage == Cassandra):
-        stop_cassandra(True)
+    if (Storage.storage == Cassandra or Storage.storage == Hadoop or Storage.storage == Hbase):
+        stop_java_unmount_memfs()
 
 def configForAnalytics():
     Microbench.analyticalClients = 1

@@ -156,7 +156,7 @@ def confHdfs():
 
 def startHdfs():
     nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
-    nnFormatClient = ThreadedClients([Hadoop.namenode], nn_format_cmd, root=True)
+    nnFormatClients = ThreadedClients([Hadoop.namenode], nn_format_cmd, root=True)
     nnFormatClients.start()
     nnFormatClients.join()
 
