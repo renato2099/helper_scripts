@@ -38,6 +38,7 @@ def prepHbaseSite():
          f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Zookeeper.zkserver], ',')))
          f.write(xmlProp("hbase.hregion.max.filesize", Hbase.regionsize))
          f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
+         f.write(xmlProp("hbase.coprocessor.region.classes", "org.apache.hadoop.hbase.coprocessor.AggregateImplementation"))
          f.write("</configuration>\n")
     copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseSiteXml)
 
@@ -194,8 +195,11 @@ def startCassandra(start_cas_cmd, obs):
 
     nodeClients = []
     if len(Storage.servers) > 1:
-        nodeClients = ThreadedClients(Storage.servers[1:], start_cas_cmd, observers=obs)
-        nodeClients.start()
+        for server in Storage.servers[1:]:
+            nodeClient = ThreadedClients(server, start_cas_cmd, observers=obs)
+            nodeClient.start()
+            time.sleep(60)
+            nodeClients = nodeClients ++ [nodeClient]
 
     return [seedClient, nodeClients]
 

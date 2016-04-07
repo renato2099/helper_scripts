@@ -10,6 +10,7 @@ from mbserver import startMBServer
 from storage import *
 from observer import *
 from functools import partial
+from stop_cas import stop_cassandra
 import time
 import os
 import sys
@@ -38,11 +39,14 @@ def sqliteOut():
 def runMBench(outdir, onlyPopulation = False):
     # do as for many experiments we have to run
     ## start storages
-    stObserver = Observer("Initialize network server")
+
+    if Storage.storage == TellStore:
+        stObserver = Observer("Initialize network server")
+    if Storage.storage == Cassandra:
+        stObserver = Observer("No host ID found")
     storageClients = startStorage([stObserver])
     # wait for notification that they have started
-    if Storage.storage == TellStore:
-    	stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+    stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
     print "Storage started"
     
     ## start microbenchmark server
@@ -78,7 +82,7 @@ def runMBench(outdir, onlyPopulation = False):
         client.join()
 
     if (Storage.storage == Cassandra):
-        os.system('./stop_cas.py')
+        stop_cassandra(True)
 
 def configForAnalytics():
     Microbench.analyticalClients = 1
