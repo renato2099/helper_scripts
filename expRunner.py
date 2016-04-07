@@ -20,14 +20,12 @@ import logging
 logging.basicConfig()
 
 def sqliteOut():
-    storage = ''
+    storage = Storage.storage.__class__.__name__.lower()
     if Storage.storage == TellStore:
-        storage = "tellstore_{0}".format(TellStore.approach)
-    elif Storage.storage == Cassandra:
-        storage = "cassandra"
-    else:
-        print "Error: current storage not supported"
-        exit(1)
+        storage = storage + "_{0}".format(TellStore.approach)
+#     else:
+#         print "Error: current storage not supported"
+#         exit(1)
     numStorages = len(Storage.servers) + len(Storage.servers1)
     numMBServers = len(Microbench.servers0) + len(Microbench.servers1)
     numClients = Microbench.clients
@@ -167,7 +165,7 @@ def runOnTell(experiment, outdir, numNodes):
         for num in numNodes:
             experiment(outdir, num)
 
-def runOnCassandra(experiment, outdir, numNodes):
+def runOnOthers(experiment, outdir, numNodes):
     for num in numNodes:
        experiment(outdir,num)
 
@@ -183,8 +181,8 @@ def runAllBenchmarks(outdir, experiments):
 
     if Storage.storage == TellStore:
         runOn = runOnTell
-    elif Storage.storage == Cassandra:
-        runOn = runOnCassandra
+    else
+        runOn = runOnOthers
     if len(experiments) == 0 or "experiment1a" in experiments:
         print "#######################################"
         print " RUN EXPERIMENT 1a"
