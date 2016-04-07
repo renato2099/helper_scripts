@@ -60,31 +60,37 @@ def prepRegionServers():
          f.write(concatStr(Hbase.hregions, '\n'))
     copyToHost([Hbase.hmaster], regions)
 
-
 def startZk():
+    zk_cmd = '{0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
+    zkClient = ThreadedClients([Zookeeper.zkserver], zk_cmd, root=True)
+    zkClient.start()
+    return zkClient
+
+def confZk():
     zooCfg = '{0}/conf/zoo.cfg'.format(Zookeeper.zkdir)
     with open(zooCfg, 'w+') as f:
          f.write("maxClientCnxns={0}\n".format(Zookeeper.maxclients))
          f.write("tickTime={0}\n".format(Zookeeper.ticktime))
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
-    os.system('ssh -A root@{0} {1}'.format(Zookeeper.zkserver, "mkdir -p {0}".format(Zookeeper.datadir)))
-    zk_cmd = '{0}/bin/zkServer.sh start'.format(Zookeeper.zkdir)
-    copyToHost([Zookeeper.zkserver], zooCfg)
-    print "{0} : {1}".format(Zookeeper.zkserver, zk_cmd)
-    os.system('ssh -A root@{0} {1}'.format(Zookeeper.zkserver, zk_cmd))
 
-def startHbase():
+    copyClient = ThreadedClients([Zookeeper.zkserver], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
+    copyClient.start()
+    copyClient.join()
+    copyToHost([Zookeeper.zkserver], zooCfg)
+
+def confHbase():
     prepRegionServers()
     prepHbaseSite()
     prepHbaseEnv()
-    start_hbase_cmd = "JAVA_HOME={1} {0}/bin/start-hbase.sh".format(Hbase.hbasedir, General.javahome)
-    os.system('ssh -A root@{0} {1}'.format(Hbase.hmaster, start_hbase_cmd))
 
-def startHdfs():
-    dfs_start_cmd ="{0}/sbin/start-dfs.sh".format(Hadoop.hadoopdir)
-    nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+def startHbase():
+    start_hbase_cmd = "JAVA_HOME={1} {0}/bin/start-hbase.sh foreground_start".format(Hbase.hbasedir, General.javahome)
+    hbaseClient = ThreadedClients([Hbase.hmaster], start_hbase_cmd, root=True)
+    hbaseClient.start()
+    return hbaseClient
 
+def confHdfs():
     mkClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
     mkClients.start()
     mkClients.join()
@@ -148,10 +154,21 @@ def startHdfs():
     copyToHost([Hadoop.namenode], slavesFile)
     copyToHost([Hadoop.namenode], masterFile)
 
-    print nn_format_cmd
-    os.system('ssh -A root@{0} {1}'.format(Hadoop.namenode, nn_format_cmd))
-    print dfs_start_cmd
-    os.system('ssh -A root@{0} {1}'.format(Hadoop.namenode, dfs_start_cmd))
+def startHdfs():
+    nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+    nnFormatClient = ThreadedClients([Hadoop.namenode], nn_format_cmd, root=True)
+    nnFormatClients.start()
+    nnFormatClients.join()
+
+    nn_start_cmd = "{0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
+    nnClient = ThreadedClients([Hadoop.namenode], nn_start_cmd, root=True)
+    nnClient.start()
+
+    dn_start_cmd = "{0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
+    dnClients = ThreadedClients(Hadoop.datanodes, dn_start_cmd, root=True)
+    dnClients.start()
+
+    return [nnClient, dnClients]
 
 def confCassandraCluster():
     templateconf = None
@@ -186,6 +203,17 @@ def confCassandraCluster():
     mkClients.join()
     time.sleep(2)
 
+def confHbaseCluster():
+    confHdfs()
+    confZk()
+    confHbase()
+
+def startHbaseThreads():
+    hdfsClients = startHdfs()
+    zkClient = startZk()
+    hbaseClients = startHbase()
+    return hdfsClients + zkClients + hbaseClients
+
 def startCassandra(start_cas_cmd, obs):
     seedClient = ThreadedClients([Storage.servers[0]], start_cas_cmd, observers=obs)
     seedClient.start()
@@ -199,7 +227,7 @@ def startCassandra(start_cas_cmd, obs):
             nodeClient = ThreadedClients(server, start_cas_cmd, observers=obs)
             nodeClient.start()
             time.sleep(60)
-            nodeClients = nodeClients ++ [nodeClient]
+            nodeClients = nodeClients + [nodeClient]
 
     return [seedClient, nodeClients]
 
@@ -256,13 +284,11 @@ def startStorage(observers = []):
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
         numa1Args = '-p 7240'
     elif Storage.storage == Hadoop:
-        startHdfs()
-        exit(0)
+        confHdfs()
+        return startHdfs()
     elif Storage.storage == Hbase:
-        startHdfs()
-        startZk()
-        startHbase()
-        exit(0)
+        confHbaseCluster()
+        return startHbaseThreads()
     elif Storage.storage == Cassandra:
         confCassandraCluster()
         start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra -f".format(Cassandra.casdir)
