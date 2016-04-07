@@ -42,9 +42,16 @@ def runMBench(outdir, onlyPopulation = False):
         stObserver = Observer("Initialize network server")
     if Storage.storage == Cassandra:
         stObserver = Observer("No host ID found")
-    storageClients = startStorage([stObserver])
-    # wait for notification that they have started
-    stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+    else:
+        stObserver = None
+        
+    if stObserver == None:
+       storageClients = startStorage([])
+    else:
+       storageClients = startStorage([stObserver])
+       # wait for notification that they have started
+       stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+
     print "Storage started"
     
     ## start microbenchmark server
