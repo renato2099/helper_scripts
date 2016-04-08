@@ -100,3 +100,6 @@ class ThreadedClients(Thread):
             if self.rnd_start:
                 time.sleep(random.randrange(0, 4))
             child.start()
+        for child in self.children:
+            child.join()
+
