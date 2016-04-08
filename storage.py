@@ -61,7 +61,7 @@ def prepRegionServers():
     copyToHost([Storage.master], regions)
 
 def startZk():
-    zk_cmd = '{0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
+    zk_cmd = 'numactl -m 0 -N 0 {0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
     zkClient = ThreadedClients([Storage.master], zk_cmd, root=True)
     zkClient.start()
     time.sleep(30)
@@ -86,12 +86,12 @@ def confHbase():
     prepHbaseEnv()
 
 def startHbase():
-    master_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
+    master_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-deamon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
     masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
     time.sleep(30)
 
-    region_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
+    region_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
     regionClients= ThreadedClients(Storage.servers, region_cmd, root=True)
     regionClients.start()
     time.sleep(30)
@@ -160,17 +160,17 @@ def confHdfs():
     copyToHost([Storage.master], masterFile)
 
 def startHdfs():
-    nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+    nn_format_cmd = "numactl -m 0 -N 0 {0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
     nnFormatClients = ThreadedClients([Storage.master], nn_format_cmd, root=True)
     nnFormatClients.start()
     nnFormatClients.join()
 
-    nn_start_cmd = "{0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
+    nn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
     nnClient = ThreadedClients([Storage.master], nn_start_cmd, root=True)
     nnClient.start()
     time.sleep(30)
 
-    dn_start_cmd = "{0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
+    dn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
     dnClients = ThreadedClients(Storage.servers, dn_start_cmd, root=True)
     dnClients.start()
     time.sleep(30)
@@ -221,7 +221,8 @@ def startHbaseThreads():
     hbaseClients = startHbase()
     return [hdfsClients, zkClient, hbaseClients]
 
-def startCassandra(start_cas_cmd, obs):
+def startCassandra(obs):
+    start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra -f".format(Cassandra.casdir)
     seedClient = ThreadedClients([Storage.servers[0]], start_cas_cmd, observers=obs)
     seedClient.start()
 
@@ -298,8 +299,7 @@ def startStorage(observers = []):
         return startHbaseThreads()
     elif Storage.storage == Cassandra:
         confCassandraCluster()
-        start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra -f".format(Cassandra.casdir)
-        return startCassandra(start_cas_cmd, observers)
+        return startCassandra(observers)
     return startStorageThreads(master_cmd, server_cmd, numa1Args, observers)
         
 if __name__ == "__main__":
