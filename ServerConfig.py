@@ -84,6 +84,7 @@ class Hadoop:
     #datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
+    datadir1        = "/mnt/ramfs/hadoop1"
     datadirSz      = "100"
     dfsreplication = "1"
 

@@ -55,6 +55,7 @@ def prepHbaseEnv():
 
 # conf/regionservers
 def prepRegionServers():
+    # not sure whether that region file is actually used in the master
     regions = '{0}/conf/regionservers'.format(Hbase.hbasedir)
     with open(regions, 'w+') as f:
          f.write(concatStr(Storage.servers, '\n'))
@@ -91,20 +92,30 @@ def startHbase():
     masterClient.start()
     time.sleep(30)
 
+    # start region servers on numa 0
     region_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-daemon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
     regionClients= ThreadedClients(Storage.servers, region_cmd, root=True)
     regionClients.start()
     time.sleep(30)
-    return [masterClient, regionClients]
+
+    # start region servers on numa 1
+    region_cmd = "JAVA_HOME={1} numactl -m 1 -N 1 {0}/bin/hbase-daemon.sh foreground_start regionserver -Dhadoop.tmp.dir={1} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hbase.hbasedir, General.javahome)
+    regionClients1= ThreadedClients(Storage.servers1, region_cmd, root=True)
+    regionClients1.start()
+    time.sleep(30)
+
+    return [masterClient, regionClients, regionClients1]
 
 def confHdfs():
-    mkClients = ThreadedClients([Storage.master] + Storage.servers, "mkdir -p {0}".format(Hadoop.datadir), root=True)
+    # mount tmpfs for master and servers on numa 0
+    mkClients = ThreadedClients([Storage.master] + Storage.servers, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz), root=True)
     mkClients.start()
     mkClients.join()
 
-    mntClients = ThreadedClients([Storage.master] + Storage.servers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Hadoop.datadirSz, Hadoop.datadir), root=True)
-    mntClients.start()
-    mntClients.join()
+    # mount tmpfs for servers on numa 1
+    mkClients = ThreadedClients(Storage.servers1, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz), root=True)
+    mkClients.start()
+    mkClients.join()
 
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
@@ -141,16 +152,16 @@ def confHdfs():
        f.write(xmlProp("dfs.namenode.rpc-address", "{0}:{1}".format(Storage.master, Hadoop.hdfsport)))
        f.write("</configuration>")
 
-    copyToHost(Storage.servers + [Storage.master], coreSiteXml)
-    copyToHost(Storage.servers + [Storage.master], hadoopEnv)
-    copyToHost(Storage.servers + [Storage.master], hdfsSiteXml)
+    copyToHost(Storage.servers + Storage.servers1 + [Storage.master], coreSiteXml)
+    copyToHost(Storage.servers + Storage.servers1 + [Storage.master], hadoopEnv)
+    copyToHost(Storage.servers + Storage.servers1 + [Storage.master], hdfsSiteXml)
 
-    # master file
+    # master file - probably not used anymore as we do not use start-dfs.sh
     masterFile = open('{0}/etc/hadoop/masters'.format(Hadoop.hadoopdir), 'w')
     masterFile.write(Storage.master)
     masterFile.close()
 
-    # slaves file
+    # slaves file - probably not used anymore as we do not use start-dfs.sh
     slavesFile = '{0}/etc/hadoop/slaves'.format(Hadoop.hadoopdir)
     with open(slavesFile, 'w+') as f:
        for host in Storage.servers:
@@ -170,12 +181,19 @@ def startHdfs():
     nnClient.start()
     time.sleep(30)
 
+    # start slaves on numa 0
     dn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
     dnClients = ThreadedClients(Storage.servers, dn_start_cmd, root=True)
     dnClients.start()
     time.sleep(30)
 
-    return [nnClient, dnClients]
+    # start slaves on numa 1
+    dn_start_cmd = "numactl -m 1 -N 1 {0}/bin/hdfs datanode -Dhadoop.tmp.dir={1} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.hadoopdir, Hadoop.datadir1)
+    dn1Clients = ThreadedClients(Storage.servers1, dn_start_cmd, root=True)
+    dn1Clients.start()
+    time.sleep(30)
+
+    return [nnClient, dnClients, dn1Clients]
 
 def confHbaseCluster():
     confHdfs()
