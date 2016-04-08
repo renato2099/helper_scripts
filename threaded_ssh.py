@@ -53,7 +53,7 @@ class ChildClient(Thread):
     def kill(self):
         print "killing processes on [{0}]...".format(', '.join(self.servers))
         for server in self.servers:
-            os.system('ssh {0}{1} "cat {2} | xargs kill -9"'.format("root@" if self.asRoot else "", server))
+            os.system('ssh {0}{1} "cat {2} | xargs kill -9"'.format("root@" if self.asRoot else "", server, self.pidFile))
             os.system('ssh {0}{1} "rm {2}'.format("root@" if self.asRoot else "", server, self.pidFile))
 
     def run(self):
