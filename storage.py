@@ -206,7 +206,7 @@ def startHbaseThreads():
     hbaseClients = startHbase()
     return [hdfsClients, zkClient, hbaseClients]
 
-def confCassandraCluster(numaNode):
+def confCassandraCluster():
     for numaNode in [0,1]:
        servers = Storage.servers if numaNode == 0 else Storage.servers1
        datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
