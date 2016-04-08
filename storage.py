@@ -287,14 +287,14 @@ def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     tclient.start()
 
     # servers1 should only exist for Tell, nobody else
-    tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
-    tclient2.start()
+    tclient1 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
+    tclient1.start()
     
     # if storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
     if (Storage.storage != TellStore):
         time.sleep(2)
     
-    return [mclient, tclient, tclient2]
+    return [mclient, tclient, tclient1]
 
 def startStorage(observers = []):
     if Storage.storage == Kudu:
