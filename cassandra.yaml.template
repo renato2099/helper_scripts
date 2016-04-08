@@ -36,13 +36,13 @@ index_summary_capacity_in_mb:
 index_summary_resize_interval_in_minutes: 60
 trickle_fsync: false
 trickle_fsync_interval_in_kb: 10240
-storage_port: 7000
-ssl_storage_port: 7001
+storage_port: casstorageport
+ssl_storage_port: cassslport
 listen_address: caslistenaddr
 start_native_transport: true
 native_transport_port: casnativeport
 start_rpc: false
-#rpc_address: casrpcaddr
+#rpc_address: 0.0.0.0
 rpc_port: casrpcport
 rpc_keepalive: true
 rpc_server_type: sync

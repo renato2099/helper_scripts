@@ -177,39 +177,6 @@ def startHdfs():
 
     return [nnClient, dnClients]
 
-def confCassandraCluster():
-    templateconf = None
-    allServers = Storage.servers 
-    for host in allServers:
-       f = open('cassandra.yaml.template', 'r')
-       templateconf = f.read()
-       f.close()
-       templateconf = templateconf.replace("casseeds", "\"" + allServers[0] + "\"")
-       templateconf = templateconf.replace("casdatadir", Cassandra.datadir)
-       templateconf = templateconf.replace("caslogdir", Cassandra.logdir)
-       templateconf = templateconf.replace("caslistenaddr", host)
-       templateconf = templateconf.replace("casnativeport", Cassandra.nativeport)
-       templateconf = templateconf.replace("casrpcaddr", Cassandra.rpcaddr)
-       templateconf = templateconf.replace("casrpcport", Cassandra.rpcport)
-       cassandraConf = '{0}/conf/cassandra.yaml'.format(Cassandra.casdir)
-       with open(cassandraConf, 'w') as f:
-          f.write(templateconf)
-          f.close()
-       copyToHost([host], cassandraConf)
-    
-    mkClients = ThreadedClients(allServers, "mkdir -p {0}".format(Cassandra.datadir), root=True)
-    mkClients.start()
-    mkClients.join()
-    time.sleep(2)
-    mntClients = ThreadedClients(allServers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, Cassandra.datadir), root=True)
-    mntClients.start()
-    mntClients.join()
-    time.sleep(2)
-    mkClients = ThreadedClients(allServers , "mkdir -p {0}".format(Cassandra.logdir), root=True)
-    mkClients.start()
-    mkClients.join()
-    time.sleep(2)
-
 def confHbaseCluster():
     confHdfs()
     confZk()
@@ -221,18 +188,69 @@ def startHbaseThreads():
     hbaseClients = startHbase()
     return [hdfsClients, zkClient, hbaseClients]
 
-def startCassandra(obs):
-    start_cas_cmd = "numactl -m 0 -N 0 {0}/bin/cassandra -f".format(Cassandra.casdir)
-    seedClient = ThreadedClients([Storage.servers[0]], start_cas_cmd, observers=obs)
-    seedClient.start()
+def confCassandraCluster(numaNode):
+    for numaNode in [0,1]:
+       servers = Storage.servers if numaNode == 0 else Storage.servers1
+       datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
+       logdir = Cassandra.logdir if numNodes == 0 else Cassandra.logdir1
+       nativeport = Cassandra.nativeport if numaNode == 0 else Cassandra.nativeport1
+       rpcport = Cassandra.rpcport if numaNode == 0 else Cassandra.rpcport1
+       storageport = Cassandra.storageport if numaNode == 0 else Cassandra.storageport1
+       sslport = Cassandra.sslport if numaNode == 0 else Cassandra.sslport1
 
+       if len(server) == 0:
+           continue
+
+       for host in servers:
+          f = open('cassandra.yaml.template', 'r')
+          templateconf = f.read()
+          f.close()
+
+          templateconf = templateconf.replace("casseeds", "\"" + Storage.servers[0] + "\"")
+          templateconf = templateconf.replace("caslistenaddr", host)
+          templateconf = templateconf.replace("casdatadir", datadir)
+          templateconf = templateconf.replace("caslogdir", logdir)
+          templateconf = templateconf.replace("casnativeport", nativeport)
+          templateconf = templateconf.replace("casrpcport", rpcport)
+          templateconf = templateconf.replace("casstorageport", storageport)
+          templateconf = templateconf.replace("cassslport", sslport)
+
+          cassandraConf = '{0}/conf/cassandra.yaml'.format(Cassandra.casdir)
+          with open(cassandraConf, 'w') as f:
+             f.write(templateconf)
+             f.close()
+          copyToHost([host], cassandraConf)
+       
+       mkClients = ThreadedClients(servers, "mkdir -p {0}".format(datadir), root=True)
+       mkClients.start()
+       mkClients.join()
+       mntClients = ThreadedClients(servers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, datadir), root=True)
+       mntClients.start()
+       mntClients.join()
+       mkClients = ThreadedClients(servers , "mkdir -p {0}".format(logdir), root=True)
+       mkClients.start()
+       mkClients.join()
+
+def startCassandra(obs):
+    start_cas_cmd = "{0}/bin/cassandra -f".format(Cassandra.casdir)
+    seedClient = ThreadedClients([Storage.servers[0]], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
+    seedClient.start()
     print "waiting for seeds"
     time.sleep(60)
 
     nodeClients = []
+    # startup remaining nodes on NUMA 0
     if len(Storage.servers) > 1:
         for server in Storage.servers[1:]:
-            nodeClient = ThreadedClients(server, start_cas_cmd, observers=obs)
+            nodeClient = ThreadedClients(server, "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
+            nodeClient.start()
+            time.sleep(60)
+            nodeClients = nodeClients + [nodeClient]
+
+    # startup nodes on NUMA 1
+    if len(Storage.servers1) > 0:
+        for server in Storage.servers1:
+            nodeClient = ThreadedClients(server, "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]

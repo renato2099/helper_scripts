@@ -104,14 +104,21 @@ class Hbase:
     zkDataDir     = Zookeeper.datadir
 
 class Cassandra:
+    datadirSz     = 50
+    listenaddr    = ""
     casdir        = "/mnt/local/tell/cassandra"
     logdir        = "/mnt/data/cassandra/cass_log"
     datadir       = "/mnt/ramfs/cassandra/cass_data"
-    datadirSz     = 50
-    listenaddr    = ""
     nativeport    = '9042'
-    rpcaddr       = "0.0.0.0"
     rpcport       = '9160'
+    storageport   = '7000'
+    sslport       = '7001'
+    logdir1        = "/mnt/data/cassandra/cass_log1"
+    datadir1       = "/mnt/ramfs/cassandra/cass_data1"
+    nativeport1    = '9041'
+    rpcport1       = '9161'
+    storageport1   = '6999'
+    sslport1       = '7002'
 
 class Hive:
     master            = Storage.master
