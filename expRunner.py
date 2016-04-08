@@ -182,15 +182,6 @@ def runOnOthers(experiment, outdir, numNodes):
        experiment(outdir,num)
 
 def runAllBenchmarks(outdir, experiments):
-    #print "#######################################"
-    #print " RUN EXPERIMENT 1a_singlebatch"
-    #print "#######################################"
-    #o = '{0}/experiment1a_singlebatch'.format(outdir)
-    #if os.path.isdir(o):
-    #    raise RuntimeError('{0} exists'.format(o))
-    #os.mkdir(o)
-    #runOnTell(partial(scalingExperiment, experiment1a_singlebatch), o, [1,2,3,4])
-
     if Storage.storage == TellStore:
         runOn = runOnTell
     else:
