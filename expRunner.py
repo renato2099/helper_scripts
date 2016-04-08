@@ -25,7 +25,7 @@ def exitGracefully(signal, frame):
     sys.exit(0)
 
 def sqliteOut():
-    storage = Storage.storage.__class__.__name__.lower()
+    storage = Storage.storage().__class__.__name__.lower()
     if Storage.storage == TellStore:
         storage = storage + "_{0}".format(TellStore.approach)
 #     else:

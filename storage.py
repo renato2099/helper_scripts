@@ -279,20 +279,20 @@ def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
     mclient.start()
 
-    # If storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
-    if (Storage.storage != Tell):
+    # if storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
+    if (Storage.storage != TellStore):
         time.sleep(2)
     
     tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
     tclient.start()
-    
-    # If storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
-    if (Storage.storage != Tell):
-        time.sleep(2)
 
     # servers1 should only exist for Tell, nobody else
     tclient2 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
     tclient2.start()
+    
+    # if storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
+    if (Storage.storage != TellStore):
+        time.sleep(2)
     
     return [mclient, tclient, tclient2]
 
