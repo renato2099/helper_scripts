@@ -79,17 +79,16 @@ class TellStore:
 
 
 class Hadoop:
-    namenode       = Storage.master
+    #namenode       = Storage.master
     hdfsport       = '20042'
-    #datanodes     = ['euler10', 'euler11', 'euler12']
-    datanodes      = Storage.servers
+    #datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
     datadir        = "/mnt/ramfs/hadoop"
     datadirSz      = "100"
     dfsreplication = "1"
 
 class Zookeeper:
-    zkserver      = 'euler08'
+    #zkserver      = Storage.master
     zkdir         = "/mnt/local/tell/zookeeper"
     ticktime      = '6000'
     datadir       = '/mnt/data/zk_data'
@@ -97,11 +96,11 @@ class Zookeeper:
     maxclients    = '6000'
 
 class Hbase:
-    hmaster       = 'euler08'
-    hregions      = ['euler06', 'euler07']
+    #hmaster       = Storage.master
+    #hregions      = Storage.servers 
     hbasedir      = "/mnt/local/tell/hbase"
     regionsize    = '49294967296'
-    hdfsNamenode  = Hadoop.namenode
+    #hdfsNamenode  = Hadoop.namenode
     zkDataDir     = Zookeeper.datadir
 
 class Cassandra:

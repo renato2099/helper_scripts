@@ -31,16 +31,16 @@ def prepHbaseSite():
          f.write("<?xml version=\"1.0\"?>\n")
          f.write("<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>\n")
          f.write("<configuration>\n")
-         f.write(xmlProp("hbase.rootdir", "hdfs://" + Hadoop.namenode + ":" + Hadoop.hdfsport + "/hbase"))
+         f.write(xmlProp("hbase.rootdir", "hdfs://" + Storage.master + ":" + Hadoop.hdfsport + "/hbase"))
          f.write(xmlProp("hbase.cluster.distributed", "true"))
          f.write(xmlProp("zookeeper.znode.parent", "/hbase-unsecure"))
          f.write(xmlProp("hbase.zookeeper.property.dataDir", Zookeeper.datadir))
-         f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Zookeeper.zkserver], ',')))
+         f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Storage.master], ',')))
          f.write(xmlProp("hbase.hregion.max.filesize", Hbase.regionsize))
          f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
          f.write(xmlProp("hbase.coprocessor.region.classes", "org.apache.hadoop.hbase.coprocessor.AggregateImplementation"))
          f.write("</configuration>\n")
-    copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseSiteXml)
+    copyToHost([Storage.master] + Storage.servers, hbaseSiteXml)
 
 def prepHbaseEnv():
     hbaseEnv = '{0}/conf/hbase-env.sh'.format(Hbase.hbasedir)
@@ -51,19 +51,20 @@ def prepHbaseEnv():
          f.write("export HBASE_MASTER_OPTS=\"$HBASE_MASTER_OPTS -XX:PermSize=128m -XX:MaxPermSize=128m\"\n")
          f.write("export HBASE_REGIONSERVER_OPTS=\"$HBASE_REGIONSERVER_OPTS -XX:PermSize=129m -XX:MaxPermSize=128m\"\n")
          f.write("export HBASE_MANAGES_ZK=false")
-    copyToHost([Hbase.hmaster] + Hbase.hregions, hbaseEnv)
+    copyToHost([Storage.master] + Storage.servers, hbaseEnv)
 
 # conf/regionservers
 def prepRegionServers():
     regions = '{0}/conf/regionservers'.format(Hbase.hbasedir)
     with open(regions, 'w+') as f:
-         f.write(concatStr(Hbase.hregions, '\n'))
-    copyToHost([Hbase.hmaster], regions)
+         f.write(concatStr(Storage.servers, '\n'))
+    copyToHost([Storage.master], regions)
 
 def startZk():
     zk_cmd = '{0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
-    zkClient = ThreadedClients([Zookeeper.zkserver], zk_cmd, root=True)
+    zkClient = ThreadedClients([Storage.master], zk_cmd, root=True)
     zkClient.start()
+    time.sleep(30)
     return zkClient
 
 def confZk():
@@ -74,10 +75,10 @@ def confZk():
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
 
-    copyClient = ThreadedClients([Zookeeper.zkserver], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
+    copyClient = ThreadedClients([Storage.master], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
     copyClient.start()
     copyClient.join()
-    copyToHost([Zookeeper.zkserver], zooCfg)
+    copyToHost([Storage.master], zooCfg)
 
 def confHbase():
     prepRegionServers()
@@ -86,30 +87,30 @@ def confHbase():
 
 def startHbase():
     master_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
-    masterClient = ThreadedClients([Hbase.hmaster], master_cmd, root=True)
+    masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
+    time.sleep(30)
 
     region_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
-    regionClients= ThreadedClients(Hbase.hregions, region_cmd, root=True)
+    regionClients= ThreadedClients(Storage.servers, region_cmd, root=True)
     regionClients.start()
+    time.sleep(30)
     return [masterClient, regionClients]
 
 def confHdfs():
-    mkClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
+    mkClients = ThreadedClients([Storage.master] + Storage.servers, "mkdir -p {0}".format(Hadoop.datadir), root=True)
     mkClients.start()
     mkClients.join()
 
-    mntClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Hadoop.datadirSz, Hadoop.datadir), root=True)
+    mntClients = ThreadedClients([Storage.master] + Storage.servers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Hadoop.datadirSz, Hadoop.datadir), root=True)
     mntClients.start()
     mntClients.join()
-
-    time.sleep(2)
 
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
     with open(coreSiteXml, 'w+') as f:
         f.write("<configuration>\n")
-        f.write(xmlProp("fs.default.name", "hdfs://{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
+        f.write(xmlProp("fs.default.name", "hdfs://{0}:{1}".format(Storage.master, Hadoop.hdfsport)))
         f.write(xmlProp("hadoop.tmp.dir", Hadoop.datadir))
         f.write(xmlProp("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem"))
         f.write(xmlProp("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem"))
@@ -137,40 +138,42 @@ def confHdfs():
        f.write("<configuration>\n")
        f.write(xmlProp("dfs.replication", Hadoop.dfsreplication))
        f.write(xmlProp("dfs.permissions", "true"))
-       f.write(xmlProp("dfs.namenode.rpc-address", "{0}:{1}".format(Hadoop.namenode, Hadoop.hdfsport)))
+       f.write(xmlProp("dfs.namenode.rpc-address", "{0}:{1}".format(Storage.master, Hadoop.hdfsport)))
        f.write("</configuration>")
 
-    copyToHost(Hadoop.datanodes + [Hadoop.namenode], coreSiteXml)
-    copyToHost(Hadoop.datanodes + [Hadoop.namenode], hadoopEnv)
-    copyToHost(Hadoop.datanodes + [Hadoop.namenode], hdfsSiteXml)
+    copyToHost(Storage.servers + [Storage.master], coreSiteXml)
+    copyToHost(Storage.servers + [Storage.master], hadoopEnv)
+    copyToHost(Storage.servers + [Storage.master], hdfsSiteXml)
 
     # master file
     masterFile = open('{0}/etc/hadoop/masters'.format(Hadoop.hadoopdir), 'w')
-    masterFile.write(Hadoop.namenode)
+    masterFile.write(Storage.master)
     masterFile.close()
 
     # slaves file
     slavesFile = '{0}/etc/hadoop/slaves'.format(Hadoop.hadoopdir)
     with open(slavesFile, 'w+') as f:
-       for host in Hadoop.datanodes:
+       for host in Storage.servers:
           f.write(host + "\n")
     
-    copyToHost([Hadoop.namenode], slavesFile)
-    copyToHost([Hadoop.namenode], masterFile)
+    copyToHost([Storage.master], slavesFile)
+    copyToHost([Storage.master], masterFile)
 
 def startHdfs():
     nn_format_cmd = "{0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
-    nnFormatClients = ThreadedClients([Hadoop.namenode], nn_format_cmd, root=True)
+    nnFormatClients = ThreadedClients([Storage.master], nn_format_cmd, root=True)
     nnFormatClients.start()
     nnFormatClients.join()
 
     nn_start_cmd = "{0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
-    nnClient = ThreadedClients([Hadoop.namenode], nn_start_cmd, root=True)
+    nnClient = ThreadedClients([Storage.master], nn_start_cmd, root=True)
     nnClient.start()
+    time.sleep(30)
 
     dn_start_cmd = "{0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
-    dnClients = ThreadedClients(Hadoop.datanodes, dn_start_cmd, root=True)
+    dnClients = ThreadedClients(Storage.servers, dn_start_cmd, root=True)
     dnClients.start()
+    time.sleep(30)
 
     return [nnClient, dnClients]
 
