@@ -193,7 +193,7 @@ def runAllBenchmarks(outdir, experiments):
 
     if Storage.storage == TellStore:
         runOn = runOnTell
-    else
+    else:
         runOn = runOnOthers
     if len(experiments) == 0 or "experiment1a" in experiments:
         print "#######################################"

@@ -92,7 +92,7 @@ def startHbase():
     region_cmd = "JAVA_HOME={1} {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
     regionClients= ThreadedClients(Hbase.hregions, region_cmd, root=True)
     regionClients.start()
-    return masterClient + regionClients
+    return [masterClient, regionClients]
 
 def confHdfs():
     mkClients = ThreadedClients([Hadoop.namenode] + Hadoop.datanodes, "mkdir -p {0}".format(Hadoop.datadir), root=True)
@@ -216,7 +216,7 @@ def startHbaseThreads():
     hdfsClients = startHdfs()
     zkClient = startZk()
     hbaseClients = startHbase()
-    return hdfsClients + zkClients + hbaseClients
+    return [hdfsClients, zkClient, hbaseClients]
 
 def startCassandra(start_cas_cmd, obs):
     seedClient = ThreadedClients([Storage.servers[0]], start_cas_cmd, observers=obs)
