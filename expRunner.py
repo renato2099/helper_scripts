@@ -214,7 +214,7 @@ def runAllBenchmarks(outdir, experiments):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
-    if len(experiments) == 0 or "experiment1c" in experiments:
+    if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
         # Experiment 1c
         # No experiment needed here (inserts are measured for all experiments)
         # o = '{0}/experiment1c'.format(outdir)
