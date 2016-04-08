@@ -37,8 +37,8 @@ class Kudu:
 
 class TellStore:
     approach           = "columnmap"
-    defaultMemorysize  = 0xD00000000 if approach == "logstructured" else 0xE00000000
-    defaultHashmapsize = 0x10000000 if approach == "logstructured" else 0x20000
+    defaultMemorysize  = 0xC90000000 if approach == "logstructured" else 0xE00000000
+    defaultHashmapsize = 0x20000000  if approach == "logstructured" else 0x20000
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
@@ -71,10 +71,10 @@ class TellStore:
     @staticmethod
     def setDefaultMemorySize():
         if TellStore.approach == "logstructured":
-            TellStore.memorysize = 0xD00000000
-            TellStore.hashmapsize = 0x10000000
+            TellStore.memorysize  = 0xC90000000
+            TellStore.hashmapsize = 0x20000000
         else:
-            TellStore.memorysize = 0xE00000000
+            TellStore.memorysize  = 0xE00000000
             TellStore.hashmapsize = 0x20000
 
 

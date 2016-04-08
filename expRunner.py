@@ -63,6 +63,7 @@ def runMBench(outdir, onlyPopulation = False):
     mbObserver = Observer("Started mbench server")
     serverClients = startMBServer([mbObserver])
     mbObserver.waitFor(len(Microbench.servers0) + len(Microbench.servers1))
+    time.sleep(2)
     print "Server started... Continue with population"
 
     clients = Microbench.clients
@@ -171,7 +172,8 @@ def scalingExperiment(experiment, outdir, numNodes):
     experiment(outdir)
 
 def runOnTell(experiment, outdir, numNodes):
-    for approach in ["rowstore"]: #["logstructured", "columnmap", "rowstore"]:
+    Storage.storage = TellStore
+    for approach in ["columnmap", "rowstore", "logstructured"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySize()
         for num in numNodes:

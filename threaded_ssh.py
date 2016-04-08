@@ -5,6 +5,7 @@ import traceback
 import time
 import random
 import sys
+import os
 
 class Color:
     FAIL = '\033[91m'
@@ -46,9 +47,14 @@ class ChildClient(Thread):
             self.client = ParallelSSHClient(servers)
         self.cmd = cmd
         self.observers = outputObservers
+        self.servers = servers
+        self.asRoot = asRoot
 
     def kill(self):
-        self.client.run_command("cat {0} | xargs kill -9".format(self.pidFile))
+        print "killing processes on [{0}]...".format(', '.join(self.servers))
+        for server in self.servers:
+            os.system('ssh {0}{1} "cat {2} | xargs kill -9"'.format("root@" if self.asRoot else "", server))
+            os.system('ssh {0}{1} "rm {2}'.format("root@" if self.asRoot else "", server, self.pidFile))
 
     def run(self):
         try:
