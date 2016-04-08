@@ -151,12 +151,12 @@ def varyBatching(experiment, outdir):
     Microbench.infinioBatch = 16
 
 def scalingExperiment(experiment, outdir, numNodes):
-    Storage.master = 'euler03'
+    Storage.master = 'euler07'
     Storage.servers = []
     servers = ['euler04', 'euler05', 'euler06', 'euler02']
     servers.reverse()
-    mservers0 = ['euler07', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01']
-    mservers1 = servers + ['euler07', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01'] 
+    mservers0 = ['euler03', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01']
+    mservers1 = servers + ['euler03', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01'] 
     mservers0.reverse()
     mservers1.reverse()
     Microbench.servers0 = []
