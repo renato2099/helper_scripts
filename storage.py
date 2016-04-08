@@ -86,12 +86,12 @@ def confHbase():
     prepHbaseEnv()
 
 def startHbase():
-    master_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-deamon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
+    master_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-daemon.sh foreground_start master".format(Hbase.hbasedir, General.javahome)
     masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
     time.sleep(30)
 
-    region_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-deamon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
+    region_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase-daemon.sh foreground_start regionserver".format(Hbase.hbasedir, General.javahome)
     regionClients= ThreadedClients(Storage.servers, region_cmd, root=True)
     regionClients.start()
     time.sleep(30)

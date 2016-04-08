@@ -29,7 +29,9 @@ def startMBServer(observers):
         cmd += getNodes(Storage.servers, " -cn ")
     elif Storage.storage == Hbase:
         path = "PATH={0}/bin:$PATH ".format(General.javahome)
-        cmd ='java -jar {0}/mbserver_hbase.jar {1}'.format(Microbench.javaDir, params)
+        cmd = 'java -jar {0}/mbserver_hbase.jar {1}'.format(Microbench.javaDir, params)
+        cmd += '-hm {0}'.format(Storage.master)
+        cmd += '-zm {0}'.format(Storage.master)
   
     client0 = ThreadedClients(Microbench.servers0, "{0}numactl -m 0 -N 0 {1}".format(path, cmd), observers=observers)
     client1 = ThreadedClients(Microbench.servers1, "{0}numactl -m 1 -N 1 {1} -p 8712".format(path, cmd), observers=observers)
