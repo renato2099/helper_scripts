@@ -20,7 +20,7 @@ def startSepClient(populate, outfile):
     
     cmd = '{0}/watch/aim-benchmark/sep_client -H "{1}" -c {2} -n {3} -r {4}'.format(Aim.builddir, reduce(reduceComma, Aim.sepservers0 + map(addPort, Aim.sepservers1)), Aim.numSEPClients, Aim.subscribers, messageRate)
     
-    if (args.populate):
+    if (populate):
         cmd = cmd + " -P"
     else:
         cmd = cmd + " -t {0}".format(Client.runTime)

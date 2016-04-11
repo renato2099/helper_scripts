@@ -25,8 +25,8 @@ def startAimServers(observers = []):
     
     cmd = '{0}/watch/aim-benchmark/{3} -f {1} -b {2}'.format(Aim.builddir, Aim.schemaFile, Aim.batchSize, serverExec)
     
-    client0 = ThreadedClients(Aim.sepservers0 + Aim.rtaservers0, "numactl -m 0 -N 0 {0}".format(cmd))
-    client1 = ThreadedClients(Aim.sepservers1 + Aim.rtaservers1, "numactl -m 1 -N 1 {0} -p 8715 -u 8716".format(cmd))
+    client0 = ThreadedClients(Aim.sepservers0 + Aim.rtaservers0, "numactl -m 0 -N 0 {0}".format(cmd), root=True)
+    client1 = ThreadedClients(Aim.sepservers1 + Aim.rtaservers1, "numactl -m 1 -N 1 {0} -p 8715 -u 8716".format(cmd), root=True)
     
     client0.start()
     client1.start()

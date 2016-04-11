@@ -70,6 +70,7 @@ class ChildClient(Thread):
                 oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC, outObs=self.observers)
                 oThread.start()
                 threads.append(oThread)
+                print "started output threads"
             for t in threads:
                 t.join()
         except:

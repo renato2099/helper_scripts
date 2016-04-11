@@ -13,8 +13,10 @@ from observer import Observer
 from aim_server import startAimServers
 from aim_sep_client import startSepClient
 from aim_rta_client import startRtaClient
+from storage import startStorage
 
 from argparse import ArgumentParser
+from functools import partial
 import time
 import os
 
@@ -23,7 +25,8 @@ def sqliteOut(withEvents):
     if Storage.storage == TellStore:
         storage = storage + "_{0}".format(TellStore.approach)
     rtaClients = Aim.numRTAClients * (len(Aim.rtaservers0) + len(Aim.rtaservers1))
-    return "{}_clients_{}".format(str(rtaClients).zfill(2), storage)
+    res = "{}_clients_{}".format(str(rtaClients).zfill(2), storage)
+    return "{}_we".format(res) if withEvents else res
 
 def runOnTell(fun):
     Storage.storage = TellStore
@@ -51,39 +54,37 @@ def scaleRTA(fun):
                 Aim.numRTAClients = 1
         fun()
 
-def runWithStorageRestart(outdir, experiments):
+def runBenchmark(outdir, experiment):
     Aim.sepservers0 = ['euler10', 'euler11']
     Aim.sepservers1 = []
     srvObserver = Observer('AIM server started')
-    for experiment in experiments:
-        storageClients = []
-        if Storage.storage == TellStore:
-            stObserver = Observer("Initialize network server")
-            storageClients = startStorage([stObserver])
-            stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
-        else:
-            storageClients = startStorage([])
-            time.sleep(2)
+    storageClients = []
+    if Storage.storage == TellStore:
+        stObserver = Observer("Initialize network server")
+        storageClients = startStorage([stObserver])
+        stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+    else:
+        storageClients = startStorage([])
+        time.sleep(2)
 # Populate
-        outfile = "{}/{}_population.db".format(outdir, sqliteOut())
-        aimObserver = Observer("AIM server started")
-        aimClients = startAimServers([aimObserver])
-        aimObserver.waitFor(len(Aim.sepservers0))
-        populationClient = startSepClient(True, outfile)
-        populationClient.join()
-        Aim.rtaservers0 = rta0
-        Aim.rtaservers1 = rta1
-        experiment()
-        for aimClient in aimClients:
-            aimClient.kill()
-            aimClient.join()
-        for client in storageClients:
-            client.kill()
-        for client in storageClients:
-            client.join()
+    outfile = "{}/{}_population.db".format(outdir, sqliteOut(False))
+    aimObserver = Observer("AIM")
+    aimClients = startAimServers([aimObserver])
+    #aimObserver.waitFor(len(Aim.sepservers0) + len(Aim.sepservers1) + len(Aim.rtaservers0) + len(Aim.rtaservers1))
+    time.sleep(2)
+    populationClient = startSepClient(True, outfile)
+    populationClient.join()
+    experiment()
+    for aimClient in aimClients:
+        aimClient.kill()
+        aimClient.join()
+    for client in storageClients:
+        client.kill()
+    for client in storageClients:
+        client.join()
 
 def experiment1(outdir):
-    odir = "{}/experiment1"
+    odir = "{}/experiment1".format(outdir)
     if not os.path.isdir(odir):
         os.mkdir(odir)
     out = "{}/{}.db".format(odir, sqliteOut(False))
@@ -91,7 +92,7 @@ def experiment1(outdir):
     client.join()
 
 def experiment2(outdir):
-    odir = "{}/experiment2"
+    odir = "{}/experiment2".format(outdir)
     if not os.path.isdir(odir):
         os.mkdir(odir)
     out = "{}/{}.db".format(odir, sqliteOut(True))
@@ -112,7 +113,7 @@ def runAllBenchmarks(out, experiments):
     if len(experiments) == 0 or 'experiment2' in experiments:
         funs.append(partial(experiment2, out))
     f = partial(simpleRunner, funs)
-    scaleRTA(partial(runWithStorageRestart, out, f))
+    scaleRTA(partial(runBenchmark, out, f))
 
 def benchmarks(out, experiments, onKudu, onTell):
     Storage.master = 'euler01'
@@ -129,12 +130,12 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-o", help="Output directory", default=out)
     parser.add_argument('experiments', metavar='E', type=str, nargs='*', help='Experiments to run (none defaults to all)')
-    parser.add_argument('--nokudu', action='store_false', help='Do not run on kudu')
-    parser.add_argument('--notell', action='store_false', help='Do not run on tell')
+    parser.add_argument('--nokudu', action='store_true', help='Do not run on kudu')
+    parser.add_argument('--notell', action='store_true', help='Do not run on tell')
     args = parser.parse_args()
     if not os.path.isdir(out):
         os.mkdir(out)
     else:
         raise RuntimeError('{} exists'.format(out))
-    benchmarks(out, args.experiments, not parser.nokudu, not parser.notell)
+    benchmarks(out, args.experiments, not args.nokudu, not args.notell)
 
