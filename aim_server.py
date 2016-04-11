@@ -12,12 +12,13 @@ def hostToIp(host):
 def semicolonReduce(x, y):
     return x + ';' + y
 
-numChunks = len(TellStore.servers) * Aim.numRTAClients * 16
+Aim.rsyncBuild()
+numChunks = (len(Storage.servers) + len(Storage.servers1)) * Aim.numRTAClients * 16
 chunkSize = ((TellStore.scanMemory // numChunks) // 8) * 8
 
 serverExec = ""
 if Storage.storage == Kudu:
-    serverExec = "aim_kudu -P {0} -s {1}".format(len(Kudu.tservers) * 2, Kudu.master)
+    serverExec = "aim_kudu -P {0} -s {1}".format((len(Storage.servers) + len(Storage.servers1)) * 2, Storage.master)
 elif Storage.storage == TellStore:
     serverExec = 'aim_server -M {0} -m {1} -c "{2}" -s "{3}" --processing-threads {4}'.format(numChunks, chunkSize, TellStore.getCommitManagerAddress(), TellStore.getServerList(), Aim.serverthreads)
 

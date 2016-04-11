@@ -22,9 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler04']
+    servers    = ['euler04', 'euler05', 'euler06', 'euler07']
     servers1   = []
-    master     = "euler04"
+    master     = "euler01"
 
 ##########################
 # Storage Implementations
@@ -134,7 +134,7 @@ class Hive:
 # Used Storage Implementation
 #############################
 
-Storage.storage = Cassandra
+Storage.storage = Kudu
 
 ###################
 # Processing Server
@@ -254,18 +254,25 @@ class YCSB:
     clientThreads = 32 #32 * (len(servers0) + len(servers1))
 
 class Aim:
-    sepservers0   = []
-    sepservers1   = ['euler11']
-    rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
+    rtaservers0   = ['euler02']
     rtaservers1   = []
+    sepservers0   = ['euler03', 'euler08', 'euler09', 'euler10', 'euler11']
+    sepservers1   = [] #rtaservers0 + ['euler01', 'euler02']
     serverthreads = 4
     schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
     subscribers   = 10 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
     numSEPClients = 5
-    numRTAClients = 1
+    numRTAClients = 2
     builddir      = General.builddir
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set(Aim.sepservers0 + Aim.sepservers1 + Aim.rtaservers0 + Aim.rtaservers1)
+        for host in hosts:
+            rsync(host)
 
 #####################
 # Client and Workload
