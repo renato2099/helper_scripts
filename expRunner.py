@@ -45,7 +45,7 @@ def runMBench(outdir, onlyPopulation = False):
 
     if Storage.storage == TellStore:
         stObserver = Observer("Initialize network server")
-    if Storage.storage == Cassandra:
+    elif Storage.storage == Cassandra:
         stObserver = Observer("No host ID found")
     else:
         stObserver = None
