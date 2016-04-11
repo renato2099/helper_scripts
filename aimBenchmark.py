@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 AIM-Benchmark
 =============
@@ -133,7 +134,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if not os.path.isdir(out):
         os.mkdir(out)
-    else
+    else:
         raise RuntimeError('{} exists'.format(out))
     benchmarks(out, args.experiments, not parser.nokudu, not parser.notell)
 
