@@ -45,7 +45,7 @@ def runMBench(outdir, onlyPopulation = False):
 
     if Storage.storage == TellStore:
         stObserver = Observer("Initialize network server")
-    if Storage.storage == Cassandra:
+    elif Storage.storage == Cassandra:
         stObserver = Observer("No host ID found")
     else:
         stObserver = None
@@ -233,7 +233,7 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment2a), o, [2])
+        runOn(partial(scalingExperiment, experiment2a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3" in experiments:
         # Experiment 3
         print "#######################################"
