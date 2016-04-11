@@ -26,7 +26,7 @@ def startSepClient(populate, outfile):
         cmd = cmd + " -t {0}".format(Client.runTime)
     
     print "Execute {0}".format(cmd)
-    res = Thread(target=os.system, (cmd,))
+    res = Thread(target=os.system, args=(cmd,))
     res.start()
     return res
 
