@@ -12,6 +12,7 @@ from ServerConfig import Hadoop
 from ServerConfig import Zookeeper
 from ServerConfig import Hbase
 from ServerConfig import Cassandra
+from ServerConfig import Ramcloud
 
 import logging
 
@@ -275,6 +276,12 @@ def startCassandra(obs):
 
     return [seedClient, nodeClients]
 
+def confRamcloud():
+    copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
+    copyClient.start()
+    copyClient.join()
+    confZk()
+
 def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
     mclient.start()
@@ -327,6 +334,11 @@ def startStorage(observers = []):
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
         numa1Args = '-p 7240'
+    elif Storage.storage == Ramcloud:
+        confRamcloud()
+        # master_cmd = '{0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}'.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+        # client_cmd = '{0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0'.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, '##hostname##', '##1101/1102##', Ramcloud.memorysize, 'backupfile0/1')
+        # continue here...
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()
