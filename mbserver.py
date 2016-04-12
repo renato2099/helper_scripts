@@ -34,7 +34,7 @@ def startMBServer(observers):
         cmd += '-hm {0}'.format(Storage.master)
         cmd += '-zm {0}'.format(Storage.master)
     elif Storage.storage == Ramcloud:
-        cmd = '{0}/watch/microbench/mbserver_ramcloud'.format(TellStore.builddir, params)
+        cmd = '{0}/watch/microbench/mbserver_ramcloud {1}'.format(TellStore.builddir, params)
         cmd += '-c main -l "infrc:host={0}-infrc,port=11100" -x {1}'.format(Storage.master, len(Storage.servers) + len(Storage.servers1))
   
     client0 = ThreadedClients(Microbench.servers0, "{0}numactl -m 0 -N 0 {1}".format(path, cmd), observers=observers)

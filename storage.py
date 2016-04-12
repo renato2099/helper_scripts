@@ -261,7 +261,7 @@ def startCassandra(obs):
     # startup remaining nodes on NUMA 0
     if len(Storage.servers) > 1:
         for server in Storage.servers[1:]:
-            nodeClient = ThreadedClients(server, "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
+            nodeClient = ThreadedClients([server], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]
@@ -269,7 +269,7 @@ def startCassandra(obs):
     if len(Storage.servers1) > 0:
     # startup nodes on NUMA 1
         for server in Storage.servers1:
-            nodeClient = ThreadedClients(server, "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
+            nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]
@@ -282,28 +282,30 @@ def confRamcloud():
     copyClient.join()
     confZk()
 
-def startRamcloud():
+def startRamcloud(obs):
     startZk()
-    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}"format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
     masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
     time.sleep(30)
 
     nodeClients = []
 
-    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
+    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
 
     # startup nodes on NUMA 0
     for server in Storage.servers:
-        nodeClient = ThreadedClients(server,  storage_cmd.format(server), observers=obs)
+        nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
         nodeClient.start()
         nodeClients = nodeClients + [nodeClient]
 
-    if len(Storage.servers1) > 0:
-    storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
     # startup nodes on NUMA 1
+    if len(Storage.servers1) > 0:
+        storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
         for server in Storage.servers1:
-            nodeClient = ThreadedClients(server,  storage_cmd.format(server), observers=obs)
+            nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
             nodeClient.start()
             nodeClients = nodeClients + [nodeClient]
 
@@ -365,7 +367,7 @@ def startStorage(observers = []):
         numa1Args = '-p 7240'
     elif Storage.storage == Ramcloud:
         confRamcloud()
-        return startRamcloud()
+        return startRamcloud(observers)
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()

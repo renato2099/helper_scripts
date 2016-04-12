@@ -28,9 +28,6 @@ def sqliteOut():
     storage = Storage.storage().__class__.__name__.lower()
     if Storage.storage == TellStore:
         storage = storage + "_{0}".format(TellStore.approach)
-#     else:
-#         print "Error: current storage not supported"
-#         exit(1)
     numStorages = len(Storage.servers) + len(Storage.servers1)
     numMBServers = len(Microbench.servers0) + len(Microbench.servers1)
     numClients = Microbench.clients
