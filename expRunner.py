@@ -151,6 +151,7 @@ def varyBatching(experiment, outdir):
 def scalingExperiment(experiment, outdir, numNodes):
     Storage.master = 'euler07'
     Storage.servers = []
+    Storage.servers1 = []
     servers = ['euler04', 'euler05', 'euler06', 'euler02']
     servers.reverse()
     mservers0 = ['euler03', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01']

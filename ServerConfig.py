@@ -167,7 +167,7 @@ class Microbench:
     infinioBatch      = 16
     txBatch           = 50
     result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
-    onlyQ1            = False
+    onlyQ1            = True
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 
     @staticmethod

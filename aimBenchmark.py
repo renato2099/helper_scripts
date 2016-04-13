@@ -120,6 +120,7 @@ def runAllBenchmarks(out, experiments):
 def benchmarks(out, experiments, onKudu, onTell):
     Storage.master = 'euler01'
     Storage.servers = ['euler04', 'euler05', 'euler06', 'euler07']
+    Storage.servers1 = []
     if onKudu:
         Storage.storage = Kudu
         runAllBenchmarks(out, experiments)

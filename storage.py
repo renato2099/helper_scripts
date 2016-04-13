@@ -12,6 +12,7 @@ from ServerConfig import Zookeeper
 from ServerConfig import Hbase
 from ServerConfig import Cassandra
 from ServerConfig import Ramcloud
+from observer import Observer
 
 import logging
 
@@ -63,9 +64,10 @@ def prepRegionServers():
 
 def startZk():
     zk_cmd = 'numactl -m 0 -N 0 {0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
-    zkClient = ThreadedClients([Storage.master], zk_cmd, root=True)
+    zkObserver = Observer("binding to port")
+    zkClient = ThreadedClients([Storage.master], zk_cmd, root=True, observers=[zkObserver])
     zkClient.start()
-    time.sleep(30)
+    zkObserver.waitFor(1)
     return zkClient
 
 def confZk():
@@ -75,6 +77,10 @@ def confZk():
          f.write("tickTime={0}\n".format(Zookeeper.ticktime))
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
+
+    deleteClient = ThreadedClients([Storage.master], "rm -rf {0}".format(Zookeeper.datadir), root=True)
+    deleteClient.start()
+    deleteClient.join()
 
     copyClient = ThreadedClients([Storage.master], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
     copyClient.start()
@@ -204,7 +210,7 @@ def startHbaseThreads():
     hdfsClients = startHdfs()
     zkClient = startZk()
     hbaseClients = startHbase()
-    return [hdfsClients, zkClient, hbaseClients]
+    return hdfsClients + [zkClient] + hbaseClients
 
 def confCassandraCluster():
     for numaNode in [0,1]:
@@ -287,15 +293,15 @@ def confRamcloud():
     confZk()
 
 def startRamcloud(obs):
-    startZk()
-    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+    zkClient = startZk()
+    master_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
     masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
     time.sleep(30)
 
     nodeClients = []
 
-    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+    storage_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
     storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
 
     # startup nodes on NUMA 0
@@ -306,7 +312,7 @@ def startRamcloud(obs):
 
     # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
-        storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
         storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
         for server in Storage.servers1:
             nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
@@ -315,7 +321,7 @@ def startRamcloud(obs):
 
     time.sleep(60)
 
-    return [masterClient] + nodeClients
+    return [masterClient, zkClient] + nodeClients
 
 def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
