@@ -12,7 +12,6 @@ from ServerConfig import Zookeeper
 from ServerConfig import Hbase
 from ServerConfig import Cassandra
 from ServerConfig import Ramcloud
-from observer import Observer
 
 import logging
 
@@ -64,10 +63,9 @@ def prepRegionServers():
 
 def startZk():
     zk_cmd = 'numactl -m 0 -N 0 {0}/bin/zkServer.sh start-foreground'.format(Zookeeper.zkdir)
-    zkObserver = Observer("binding to port")
-    zkClient = ThreadedClients([Storage.master], zk_cmd, root=True, observers=[zkObserver])
+    zkClient = ThreadedClients([Storage.master], zk_cmd, root=True)
     zkClient.start()
-    zkObserver.waitFor(1)
+    time.sleep(30)
     return zkClient
 
 def confZk():
@@ -77,10 +75,6 @@ def confZk():
          f.write("tickTime={0}\n".format(Zookeeper.ticktime))
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
-
-    deleteClient = ThreadedClients([Storage.master], "rm -rf {0}".format(Zookeeper.datadir), root=True)
-    deleteClient.start()
-    deleteClient.join()
 
     copyClient = ThreadedClients([Storage.master], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
     copyClient.start()
@@ -210,7 +204,7 @@ def startHbaseThreads():
     hdfsClients = startHdfs()
     zkClient = startZk()
     hbaseClients = startHbase()
-    return hdfsClients + [zkClient] + hbaseClients
+    return [hdfsClients, zkClient, hbaseClients]
 
 def confCassandraCluster():
     for numaNode in [0,1]:
@@ -255,9 +249,9 @@ def confCassandraCluster():
        mkClients.start()
        mkClients.join()
 
-def startCassandra(obs):
+def startCassandra():
     start_cas_cmd = "{0}/bin/cassandra -f".format(Cassandra.casdir)
-    seedClient = ThreadedClients([Storage.servers[0]], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
+    seedClient = ThreadedClients([Storage.servers[0]], "numactl -m 0 -N 0 {0}".format(start_cas_cmd))
     seedClient.start()
     print "waiting for seeds"
     time.sleep(60)
@@ -266,17 +260,19 @@ def startCassandra(obs):
     # startup remaining nodes on NUMA 0
     if len(Storage.servers) > 1:
         for server in Storage.servers[1:]:
+            obs = Observer("No host ID found")
             nodeClient = ThreadedClients([server], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
-            time.sleep(60)
+            obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
 
     if len(Storage.servers1) > 0:
     # startup nodes on NUMA 1
         for server in Storage.servers1:
+            obs = Observer("No host ID found")
             nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
-            time.sleep(60)
+            obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
 
     return [seedClient] + nodeClients
@@ -292,59 +288,68 @@ def confRamcloud():
 
     confZk()
 
-def startRamcloud(obs):
-    zkClient = startZk()
-    master_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+def startRamcloud():
+    startZk()
+    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
     masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
     masterClient.start()
     time.sleep(30)
 
     nodeClients = []
 
-    storage_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
     storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
 
     # startup nodes on NUMA 0
     for server in Storage.servers:
-        nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
+        nodeClient = ThreadedClients([server],  storage_cmd.format(server))
         nodeClient.start()
         nodeClients = nodeClients + [nodeClient]
 
     # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
-        storage_cmd = "LD_LIBRARY_PATH=/mnt/local/tell/boost/lib numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
         storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
         for server in Storage.servers1:
-            nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
+            nodeClient = ThreadedClients([server],  storage_cmd.format(server))
             nodeClient.start()
             nodeClients = nodeClients + [nodeClient]
 
     time.sleep(60)
 
-    return [masterClient, zkClient] + nodeClients
+    return [masterClient] + nodeClients
 
-def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
-    mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
+def startStorageThreads(master_cmd, server_cmd, numa1Args, masterObserverString="", serverObserverString=""):
+    masterObservers = []
+    if len(masterObserverString) > 0:
+        masterObservers = Observer(masterObserverString)
+
+    mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=masterObservers)
     mclient.start()
 
-    # if storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
-    if (Storage.storage != TellStore):
+    if len(masterObservers) > 0:
+       masterObservers[0].waitFor(1)
+    else:
         time.sleep(2)
     
-    tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=obs)
+    storageObservers = []
+    if len(serverObserverString) > 0:
+        storageObservers = Observer(serverObserverString)
+
+    tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=storageObservers)
     tclient.start()
 
-    # servers1 should only exist for Tell, nobody else
-    tclient1 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=obs)
+    tclient1 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=storageObservers)
     tclient1.start()
     
-    # if storage is not Tell, we wait a small amount of time to let the system start up (for Tell we can use the observer instead)
-    if (Storage.storage != TellStore):
+    if len(storageObservers) > 0:
+        storageObservers[0].waitFor(len(Storage.servers), + len(Storage.servers1))
+    else:
         time.sleep(2)
-    
+
     return [mclient, tclient, tclient1]
 
-def startStorage(observers = []):
+def startStorage():
     if Storage.storage == Kudu:
         master_dir = Kudu.master_dir
         tserver_dir = Kudu.tserver_dir
@@ -352,6 +357,8 @@ def startStorage(observers = []):
         master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(master_dir)
         server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(tserver_dir, Storage.master)
         numa1Args = "--rpc_bind_addresses=0.0.0.0:7049"
+        masterObs = ""
+        storageObs = ""
         if Kudu.clean:
             rmcommand = 'rm -rf {0}/*'
             master_client = ThreadedClients([Storage.master], rmcommand.format(master_dir), root=True)
@@ -365,9 +372,11 @@ def startStorage(observers = []):
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
         numa1Args = '-p 7240'
+        masterObs = ""
+        storageObs = "Initialize network server"
     elif Storage.storage == Ramcloud:
         confRamcloud()
-        return startRamcloud(observers)
+        return startRamcloud()
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()
@@ -376,8 +385,8 @@ def startStorage(observers = []):
         return startHbaseThreads()
     elif Storage.storage == Cassandra:
         confCassandraCluster()
-        return startCassandra(observers)
-    return startStorageThreads(master_cmd, server_cmd, numa1Args, observers)
+        return startCassandra()
+    return startStorageThreads(master_cmd, server_cmd, numa1Args, masterObs, storageObs)
         
 if __name__ == "__main__":
     startStorage()

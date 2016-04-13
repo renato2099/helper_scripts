@@ -59,16 +59,12 @@ def runBenchmark(outdir, experiment):
     Aim.sepservers1 = []
     srvObserver = Observer('AIM server started')
     storageClients = []
-    if Storage.storage == TellStore:
-        TellStore.setDefaultMemorySize()
-        stObserver = Observer("Initialize network server")
-        storageClients = startStorage([stObserver])
-        #stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
-        time.sleep(40)
-    else:
-        storageClients = startStorage([])
-        time.sleep(2)
-# Populate
+
+    ## start storages
+    storageClients = startStorage()
+    print "Storage started"
+    
+    # Populate
     outfile = "{}/{}_population.db".format(outdir, sqliteOut(False))
     aimObserver = Observer("AIM")
     aimClients = startAimServers([aimObserver])
