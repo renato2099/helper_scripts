@@ -274,7 +274,7 @@ def startCassandra(obs):
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]
 
-    return [seedClient, nodeClients]
+    return [seedClient] + nodeClients
 
 def confRamcloud():
     copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
@@ -316,7 +316,7 @@ def startRamcloud(obs):
 
     time.sleep(60)
 
-    return [masterClient, nodeClients]
+    return [masterClient] + nodeClients
 
 def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
