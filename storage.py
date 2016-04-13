@@ -280,6 +280,11 @@ def confRamcloud():
     copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
     copyClient.start()
     copyClient.join()
+    
+    deleteClient = ThreadedClients(Storage.servers, "rm -rf {0} {1}".format(Ramcloud.backupfile, Ramcloud.backupfile1), root=True)
+    deleteClient.start()
+    deleteClient.join()
+
     confZk()
 
 def startRamcloud(obs):
