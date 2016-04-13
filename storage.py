@@ -2,7 +2,6 @@
 import os
 import time
 from threaded_ssh import ThreadedClients
-from pssh import ParallelSSHClient
 
 from ServerConfig import General
 from ServerConfig import Storage
@@ -306,22 +305,12 @@ def startStorage(observers = []):
         numa1Args = "--rpc_bind_addresses=0.0.0.0:7049"
         if Kudu.clean:
             rmcommand = 'rm -rf {0}/*'
-            master_client = ParallelSSHClient([Storage.master], user="root")
-            output = master_client.run_command(rmcommand.format(master_dir))
-            tserver_client = ParallelSSHClient(Storage.servers, user="root")
-            tservers_out = tserver_client.run_command(rmcommand.format(tserver_dir))
-            for host in output:
-                for line in output[host]['stdout']:
-                    print "Host {0}: {1}".format(host, line)
-        
-                for line in output[host]['stderr']:
-                    print "{0}Host {1}: {2}".format(self.FAIL, host, line)
-            for host in tservers_out:
-                for line in tservers_out[host]['stdout']:
-                    print "Host {0}: {1}".format(host, line)
-        
-                for line in tservers_out[host]['stderr']:
-                    print "{0}Host {1}: {2}".format(self.FAIL, host, line)
+            master_client = ThreadedClients([Storage.master], rmcommand.format(master_dir), root=True)
+            master_client.start()
+            tserver_client = ThreadedClients(Storage.servers + Storage.servers1, rmcommand.format(tserver_dir), root=True)
+            tserver_client.start()
+            master_client.join()
+            tserver_client.join()
     elif Storage.storage == TellStore:
         TellStore.rsyncBuild()
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)

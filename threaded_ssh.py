@@ -33,9 +33,9 @@ class OutputClient(Thread):
     def unregister (self, observer):
         if observer in self.observers:
            self.observers.remove(observer)
-    def notify_observers(self, *args):
+    def notify_observers(self, host, line):
         for obs in self.observers:
-          obs.notify(self, *args)
+          obs.notify(host, line)
 
 class ChildClient(Thread):
     nextPid = 0

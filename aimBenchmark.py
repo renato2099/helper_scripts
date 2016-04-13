@@ -60,9 +60,11 @@ def runBenchmark(outdir, experiment):
     srvObserver = Observer('AIM server started')
     storageClients = []
     if Storage.storage == TellStore:
+        TellStore.setDefaultMemorySize()
         stObserver = Observer("Initialize network server")
         storageClients = startStorage([stObserver])
-        stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+        #stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
+        time.sleep(40)
     else:
         storageClients = startStorage([])
         time.sleep(2)
