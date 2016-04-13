@@ -11,6 +11,7 @@ from ServerConfig import Hadoop
 from ServerConfig import Zookeeper
 from ServerConfig import Hbase
 from ServerConfig import Cassandra
+from ServerConfig import Ramcloud
 
 import logging
 
@@ -34,8 +35,8 @@ def prepHbaseSite():
          f.write(xmlProp("hbase.cluster.distributed", "true"))
          f.write(xmlProp("zookeeper.znode.parent", "/hbase-unsecure"))
          f.write(xmlProp("hbase.zookeeper.property.dataDir", Zookeeper.datadir))
-         f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Storage.master], ',')))
          f.write(xmlProp("hbase.hregion.max.filesize", Hbase.regionsize))
+         f.write(xmlProp("hbase.zookeeper.quorum", concatStr([Storage.master], ',')))
          f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
          f.write(xmlProp("hbase.coprocessor.region.classes", "org.apache.hadoop.hbase.coprocessor.AggregateImplementation"))
          f.write("</configuration>\n")
@@ -259,20 +260,62 @@ def startCassandra(obs):
     # startup remaining nodes on NUMA 0
     if len(Storage.servers) > 1:
         for server in Storage.servers[1:]:
-            nodeClient = ThreadedClients(server, "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
+            nodeClient = ThreadedClients([server], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]
 
-    # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
+    # startup nodes on NUMA 1
         for server in Storage.servers1:
-            nodeClient = ThreadedClients(server, "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
+            nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=obs)
             nodeClient.start()
             time.sleep(60)
             nodeClients = nodeClients + [nodeClient]
 
     return [seedClient, nodeClients]
+
+def confRamcloud():
+    copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
+    copyClient.start()
+    copyClient.join()
+    
+    deleteClient = ThreadedClients(Storage.servers, "rm -rf {0} {1}".format(Ramcloud.backupfile, Ramcloud.backupfile1), root=True)
+    deleteClient.start()
+    deleteClient.join()
+
+    confZk()
+
+def startRamcloud(obs):
+    startZk()
+    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+    masterClient = ThreadedClients([Storage.master], master_cmd, root=True)
+    masterClient.start()
+    time.sleep(30)
+
+    nodeClients = []
+
+    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
+
+    # startup nodes on NUMA 0
+    for server in Storage.servers:
+        nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
+        nodeClient.start()
+        nodeClients = nodeClients + [nodeClient]
+
+    # startup nodes on NUMA 1
+    if len(Storage.servers1) > 0:
+        storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
+        for server in Storage.servers1:
+            nodeClient = ThreadedClients([server],  storage_cmd.format(server), observers=obs)
+            nodeClient.start()
+            nodeClients = nodeClients + [nodeClient]
+
+    time.sleep(60)
+
+    return [masterClient, nodeClients]
 
 def startStorageThreads(master_cmd, server_cmd, numa1Args, obs):
     mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=obs)
@@ -316,6 +359,9 @@ def startStorage(observers = []):
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
         numa1Args = '-p 7240'
+    elif Storage.storage == Ramcloud:
+        confRamcloud()
+        return startRamcloud(observers)
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()

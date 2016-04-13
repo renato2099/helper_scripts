@@ -130,11 +130,20 @@ class Hive:
     thriftport        = "10000"
     thriftbindhost    = master
 
+class Ramcloud:
+    ramclouddir       = "/mnt/local/tell/RAMCloud/obj.master"
+    backupdir         = "/mnt/data/rc_data"
+    backupfile        = backupdir + "/rc.bk"
+    backupfile1       = backupdir + "/rc1.bk"
+    storageport       = 1101
+    storageport1      = 1102
+    memorysize        = 48000
+
 #############################
 # Used Storage Implementation
 #############################
 
-Storage.storage = Kudu
+Storage.storage = Ramcloud
 
 ###################
 # Processing Server
