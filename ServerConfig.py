@@ -34,6 +34,7 @@ class Kudu:
     clean       = True
     master_dir  = '/mnt/data/kudu-master'
     tserver_dir = '/mnt/data/kudu-tserver'
+    tserver_dir1= '/mnt/data/kudu-tserver1'
 
 class TellStore:
     approach           = "columnmap"
@@ -138,6 +139,7 @@ class Ramcloud:
     storageport       = 1101
     storageport1      = 1102
     memorysize        = 48000
+    boost_lib         = "/mnt/local/tell/boost/lib"
 
 #############################
 # Used Storage Implementation

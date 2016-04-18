@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+import sys
+import signal
 import os
 import time
+
 from threaded_ssh import ThreadedClients
 from observer import *
 
@@ -14,7 +17,16 @@ from ServerConfig import Hbase
 from ServerConfig import Cassandra
 from ServerConfig import Ramcloud
 
+from stop_java_unmount_memfs import stop_java_unmount_memfs
+
 import logging
+
+if 'threading' in sys.modules:
+        del sys.modules['threading']
+        import gevent
+        import gevent.socket
+        import gevent.monkey
+        gevent.monkey.patch_all()
 
 logging.basicConfig()
 
@@ -245,9 +257,8 @@ def confRamcloud():
     confZk()
 
 def startRamcloud():
-    startZk()
-
-    master_cmd = "numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport)
+    zkClient = startZk()
+    master_cmd = "LD_LIBRARY_PATH={3} numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, Ramcloud.boost_lib)
 
     masterObs = Observer("Memory usage now")
     masterClient = ThreadedClients([Storage.master], master_cmd, observers=[masterObs])
@@ -257,11 +268,11 @@ def startRamcloud():
     # create observer list
     storageObs = []
     for i in range(len(Storage.servers) + len(Storage.servers1)):
-        storageObs = storageObs + [Observer("Server " + i ".0 is up")]
+        storageObs = storageObs + [Observer("Server " + str(i) + ".0 is up")]
 
     nodeClients = []
-    storage_cmd = "numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
-    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile)
+    storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile, Ramcloud.boost_lib)
 
     # startup nodes on NUMA 0
     for server in Storage.servers:
@@ -271,35 +282,39 @@ def startRamcloud():
 
     # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
-        storage_cmd = "numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
-        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1)
+        storage_cmd = "LD_LIBRARY_PATH={3} numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1, Ramcloud.boost_lib)
         for server in Storage.servers1:
             nodeClient = ThreadedClients([server],  storage_cmd.format(server))
             nodeClient.start()
             nodeClients = nodeClients + [nodeClient]
 
     # wait until all storages are up (the message is displayed at least once at at least one storage server)
-    for storageOb in storabeObs:
+    for storageOb in storageObs:
         storageOb.waitFor(1)
 
-    return [masterClient] + nodeClients
+    return [zkClient, masterClient] + nodeClients
 
 def confKudu():
    if Kudu.clean:
        rmcommand = 'rm -rf {0}/*'
        master_client = ThreadedClients([Storage.master], rmcommand.format(Kudu.master_dir), root=True)
        master_client.start()
-       tserver_client = ThreadedClients(Storage.servers + Storage.servers1, rmcommand.format(Kudu.tserver_dir), root=True)
+       tserver_client = ThreadedClients(Storage.servers, rmcommand.format(Kudu.tserver_dir), root=True)
        tserver_client.start()
+       tserver_client1 = ThreadedClients(Storage.servers1, rmcommand.format(Kudu.tserver_dir1), root=True)
+       tserver_client1.start()
+
        master_client.join()
        tserver_client.join()
+       tserver_client1.join()
 
-def startStorageThreads(master_cmd, server_cmd, numa1Args, masterObserverString="", serverObserverString=""):
+def startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObserverString="", serverObserverString="", envVars = ""):
     masterObservers = []
     if len(masterObserverString) > 0:
         masterObservers = [Observer(masterObserverString)]
 
-    mclient = ThreadedClients([Storage.master], "numactl -m 0 -N 0 {0}".format(master_cmd), observers=masterObservers)
+    mclient = ThreadedClients([Storage.master], "{0}numactl -m 0 -N 0 {1}".format(envVars, master_cmd), observers=masterObservers)
     mclient.start()
 
     if len(masterObservers) > 0:
@@ -311,14 +326,14 @@ def startStorageThreads(master_cmd, server_cmd, numa1Args, masterObserverString=
     if len(serverObserverString) > 0:
         storageObservers = [Observer(serverObserverString)]
 
-    tclient = ThreadedClients(Storage.servers, "numactl -m 0 -N 0 {0}".format(server_cmd), observers=storageObservers)
+    tclient = ThreadedClients(Storage.servers, "{0}numactl -m 0 -N 0 {1} {2}".format(envVars, server_cmd, numa0Args), observers=storageObservers)
     tclient.start()
 
-    tclient1 = ThreadedClients(Storage.servers1, 'numactl -m 1 -N 1 {0} {1}'.format(server_cmd, numa1Args), observers=storageObservers)
+    tclient1 = ThreadedClients(Storage.servers1, '{0}numactl -m 1 -N 1 {1} {2}'.format(envVars, server_cmd, numa1Args), observers=storageObservers)
     tclient1.start()
     
     if len(storageObservers) > 0:
-        storageObservers[0].waitFor(len(Storage.servers), + len(Storage.servers1))
+        storageObservers[0].waitFor(len(Storage.servers) + len(Storage.servers1))
     else:
         time.sleep(2)
 
@@ -330,39 +345,45 @@ def startHdfs():
     nnFormatClients.start()
     nnFormatClients.join()
 
+    javaHome = "JAVA_HOME={0} ".format(General.javahome)
     masterObs = "NameNode RPC up at"
     nn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
     slaveObs = "Acknowledging ACTIVE Namenode"
     dn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
+    numa0Args = ""
     numa1Args = "-Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.datadir1)
 
-    return startStorageThreads(nn_start_cmd, dn_start_cmd, numa1Args, masterObs, slaveObs) 
+    return startStorageThreads(nn_start_cmd, dn_start_cmd, numa0Args, numa1Args, masterObs, slaveObs, javaHome) 
 
 def startHbaseThreads():
     hdfsClients = startHdfs()
     zkClient = startZk()
 
     # starting Hbase Threads
+    javaHome = "JAVA_HOME={0} ".format(General.javahome)
     masterObs = "Waiting for region servers count to settle"
-    master_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase master start".format(Hbase.hbasedir, General.javahome)
+    master_cmd = "numactl -m 0 -N 0 {0}/bin/hbase master start".format(Hbase.hbasedir)
     regionObs = "Post open deploy tasks for hbase:namespace"
-    region_cmd = "JAVA_HOME={1} numactl -m 0 -N 0 {0}/bin/hbase regionserver start".format(Hbase.hbasedir, General.javahome)
+    region_cmd = "numactl -m 0 -N 0 {0}/bin/hbase regionserver start".format(Hbase.hbasedir)
+    numa0Args = ""
     numa1Args = "-Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.datadir1)
-    hbaseClients = startStorageThreads(master_cmd, region_cmd, numa1Args, masterObs, regionObs)
+    hbaseClients = startStorageThreads(master_cmd, region_cmd, numa0Args, numa1Args, masterObs, regionObs, javaHome)
     return [hdfsClients, zkClient, hbaseClients]
 
 def startStorage():
     if Storage.storage == Kudu:
         confKudu()
         master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(Kudu.master_dir)
-        server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver --fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}'.format(Kudu.tserver_dir, Storage.master)
-        numa1Args = "--rpc_bind_addresses=0.0.0.0:7049"
+        server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver'
+        numa0Args = "--fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}".format(Kudu.tserver_dir, Storage.master)
+        numa1Args = "--fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1} --rpc_bind_addresses=0.0.0.0:7049 --webserver_port=8049".format(Kudu.tserver_dir1, Storage.master)
         masterObs = ""
         storageObs = ""
     elif Storage.storage == TellStore:
         TellStore.rsyncBuild()
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
+        numa0Args = ""
         numa1Args = '-p 7240'
         masterObs = ""
         storageObs = "Initialize network server"
@@ -378,7 +399,7 @@ def startStorage():
     elif Storage.storage == Cassandra:
         confCassandraCluster()
         return startCassandra()
-    return startStorageThreads(master_cmd, server_cmd, numa1Args, masterObs, storageObs)
+    return startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObs, storageObs)
 
 def exitGracefully(signal, frame):
     stop_java_unmount_memfs()
@@ -387,8 +408,8 @@ def exitGracefully(signal, frame):
 if __name__ == "__main__":
     storageClients = startStorage()
     signal.signal(signal.SIGINT, exitGracefully)
-    print "Storage started"
-    print "Hit Ctrl-C to shut it down"
+    print "\033[1;31mStorage started\033[0m"
+    print "\033[1;31mHit Ctrl-C to shut it down\033[0m"
     for client in storageClients:
         client.join()
 

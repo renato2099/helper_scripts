@@ -20,6 +20,13 @@ import logging
 
 logging.basicConfig()
 
+if 'threading' in sys.modules:
+        del sys.modules['threading']
+        import gevent
+        import gevent.socket
+        import gevent.monkey
+        gevent.monkey.patch_all()
+
 def exitGracefully(signal, frame):
     stop_java_unmount_memfs()
     sys.exit(0)
