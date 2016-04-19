@@ -121,6 +121,7 @@ class Cassandra:
     rpcport1       = '9161'
     storageport1   = '6999'
     sslport1       = '7002'
+    jmxport1       = '7198'
 
 class Hive:
     master            = Storage.master

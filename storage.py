@@ -189,6 +189,11 @@ def confCassandraCluster():
     dirClient.start()
     dirClient.join()
 
+    # copy all conf files over, cassandra.yaml will be overwritten later
+    copyClient = ThreadedClients(Storage.servers1, "cp -rf {0}/conf/* {0}/conf1/".format(Cassandra.casdir))
+    copyClient.start()
+    copyClient.join()
+
     for numaNode in [0,1]:
        servers = Storage.servers if numaNode == 0 else Storage.servers1
        datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
@@ -257,7 +262,7 @@ def startCassandra():
     # startup nodes on NUMA 1
         for server in Storage.servers1:
             obs = Observer(observerString)
-            nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0} -Dcassandra.config=file:///{1}/conf1".format(start_cas_cmd, Cassandra.casdir), observers=[obs])
+            nodeClient = ThreadedClients([server], '{3} CASSANDRA_CONF={1}/conf1 LOCAL_JMX=yes JMX_PORT={2} numactl -m 1 -N 1 {0} -Dcassandra.logdir={4}'.format(start_cas_cmd, Cassandra.casdir, Cassandra.jmxport1, javaHome, Cassandra.logdir1), observers=[obs])
             nodeClient.start()
             obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
