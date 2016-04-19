@@ -235,10 +235,11 @@ def confCassandraCluster():
 def startCassandra():
     observerString = "No host ID found"
     start_cas_cmd = "{0}/bin/cassandra -f".format(Cassandra.casdir)
+    javaHome = "JAVA_HOME={0} ".format(General.javahome)
 
     # startup seed node
     obs = Observer(observerString)
-    seedClient = ThreadedClients([Storage.servers[0]], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=[obs])
+    seedClient = ThreadedClients([Storage.servers[0]], "{1} numactl -m 0 -N 0 {0}".format(start_cas_cmd, javaHome), observers=[obs])
     seedClient.start()
     obs.waitFor(1)
 
@@ -247,7 +248,7 @@ def startCassandra():
     if len(Storage.servers) > 1:
         for server in Storage.servers[1:]:
             obs = Observer(observerString)
-            nodeClient = ThreadedClients([server], "numactl -m 0 -N 0 {0}".format(start_cas_cmd), observers=[obs])
+            nodeClient = ThreadedClients([server], "{1} numactl -m 0 -N 0 {0}".format(start_cas_cmd, javaHome), observers=[obs])
             nodeClient.start()
             obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
