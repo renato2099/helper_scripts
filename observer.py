@@ -19,8 +19,6 @@ class Observer:
 
     def waitFor(self, num):
         doneP = 0
-        doneP += self.numNotifications
-        self.numNotifications = 0
         while (doneP < num):
             self.condition.acquire()
             self.condition.wait(1)

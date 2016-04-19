@@ -10,7 +10,7 @@ from mbserver import startMBServer
 from storage import *
 from observer import *
 from functools import partial
-from stop_java_unmount_memfs import stop_java_unmount_memfs
+from unmount_memfs import unmount_memfs
 import time
 import os
 import sys
@@ -26,10 +26,6 @@ if 'threading' in sys.modules:
         import gevent.socket
         import gevent.monkey
         gevent.monkey.patch_all()
-
-def exitGracefully(signal, frame):
-    stop_java_unmount_memfs()
-    sys.exit(0)
 
 def sqliteOut():
     storage = Storage.storage().__class__.__name__.lower()
@@ -48,6 +44,7 @@ def runMBench(outdir, onlyPopulation = False):
 
     ## start storages
     storageClients = startStorage()
+    signal.signal(signal.SIGINT, partial(exitGracefully, storageClients))
     print "Storage started"
     
     ## start microbenchmark server
@@ -83,8 +80,7 @@ def runMBench(outdir, onlyPopulation = False):
     for client in storageClients:
         client.join()
 
-    if (Storage.storage == Cassandra or Storage.storage == Hadoop or Storage.storage == Hbase):
-        stop_java_unmount_memfs()
+    unmount_memfs()
 
 def configForAnalytics():
     Microbench.analyticalClients = 1

@@ -17,7 +17,9 @@ from ServerConfig import Hbase
 from ServerConfig import Cassandra
 from ServerConfig import Ramcloud
 
-from stop_java_unmount_memfs import stop_java_unmount_memfs
+from functools import partial
+
+from unmount_memfs import unmount_memfs
 
 import logging
 
@@ -53,7 +55,7 @@ def prepHbaseSite():
          f.write(xmlProp("hbase.zookeeper.property.clientPort", Zookeeper.clientport))
          f.write(xmlProp("hbase.coprocessor.region.classes", "org.apache.hadoop.hbase.coprocessor.AggregateImplementation"))
          f.write("</configuration>\n")
-    copyToHost([Storage.master] + Storage.servers, hbaseSiteXml)
+    copyToHost([Storage.master] + Storage.servers + Storage.servers1, hbaseSiteXml)
 
 def prepHbaseEnv():
     hbaseEnv = '{0}/conf/hbase-env.sh'.format(Hbase.hbasedir)
@@ -64,14 +66,14 @@ def prepHbaseEnv():
          f.write("export HBASE_MASTER_OPTS=\"$HBASE_MASTER_OPTS -XX:PermSize=128m -XX:MaxPermSize=128m\"\n")
          f.write("export HBASE_REGIONSERVER_OPTS=\"$HBASE_REGIONSERVER_OPTS -XX:PermSize=129m -XX:MaxPermSize=128m\"\n")
          f.write("export HBASE_MANAGES_ZK=false")
-    copyToHost([Storage.master] + Storage.servers, hbaseEnv)
+    copyToHost([Storage.master] + Storage.servers + Storage.servers1, hbaseEnv)
 
 # conf/regionservers
 def prepRegionServers():
     # not sure whether that region file is actually used in the master
     regions = '{0}/conf/regionservers'.format(Hbase.hbasedir)
     with open(regions, 'w+') as f:
-         f.write(concatStr(Storage.servers, '\n'))
+         f.write(concatStr(Storage.servers + Storage.servers1, '\n'))
     copyToHost([Storage.master], regions)
 
 def startZk():
@@ -90,6 +92,10 @@ def confZk():
          f.write("dataDir={0}\n".format(Zookeeper.datadir))
          f.write("clientPort={0}\n".format(Zookeeper.clientport))
 
+    deleteClient = ThreadedClients([Storage.master], "rm -rf {0}".format(Zookeeper.datadir), root=True)
+    deleteClient.start()
+    deleteClient.join()
+
     copyClient = ThreadedClients([Storage.master], "mkdir -p {0}".format(Zookeeper.datadir), root=True)
     copyClient.start()
     copyClient.join()
@@ -101,6 +107,7 @@ def confHbase():
     prepHbaseEnv()
 
 def confHdfs():
+
     # mount tmpfs for master and servers on numa 0
     mkClients = ThreadedClients([Storage.master] + Storage.servers, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz), root=True)
     mkClients.start()
@@ -151,37 +158,49 @@ def confHdfs():
     copyToHost(Storage.servers + Storage.servers1 + [Storage.master], hdfsSiteXml)
 
     # master file - probably not used anymore as we do not use start-dfs.sh
-    masterFile = open('{0}/etc/hadoop/masters'.format(Hadoop.hadoopdir), 'w')
-    masterFile.write(Storage.master)
-    masterFile.close()
+    masterFile = '{0}/etc/hadoop/masters'.format(Hadoop.hadoopdir)
+    with open(masterFile, "w+") as f:
+        f.write(Storage.master)
 
     # slaves file - probably not used anymore as we do not use start-dfs.sh
     slavesFile = '{0}/etc/hadoop/slaves'.format(Hadoop.hadoopdir)
     with open(slavesFile, 'w+') as f:
-       for host in Storage.servers:
+       for host in (Storage.servers + Storage.servers1):
           f.write(host + "\n")
     
-    copyToHost([Storage.master], slavesFile)
     copyToHost([Storage.master], masterFile)
+    copyToHost([Storage.master], slavesFile)
 
+    # format namenode
+    nn_format_cmd = "numactl -m 0 -N 0 {0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+    nnFormatClients = ThreadedClients([Storage.master], nn_format_cmd, root=True)
+    nnFormatClients.start()
+    nnFormatClients.join()
 
 def confHbaseCluster():
-    confHdfs()
     confZk()
+    confHdfs()
     confHbase()
 
 
 def confCassandraCluster():
+    os.system("mkdir -p {0}/conf1".format(Cassandra.casdir))
+    dirClient = ThreadedClients(Storage.servers1, "mkdir -p {0}/conf1".format(Cassandra.casdir))
+    dirClient.start()
+    dirClient.join()
+
     for numaNode in [0,1]:
        servers = Storage.servers if numaNode == 0 else Storage.servers1
        datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
-       logdir = Cassandra.logdir if numNodes == 0 else Cassandra.logdir1
+       logdir = Cassandra.logdir if numaNode == 0 else Cassandra.logdir1
        nativeport = Cassandra.nativeport if numaNode == 0 else Cassandra.nativeport1
        rpcport = Cassandra.rpcport if numaNode == 0 else Cassandra.rpcport1
        storageport = Cassandra.storageport if numaNode == 0 else Cassandra.storageport1
        sslport = Cassandra.sslport if numaNode == 0 else Cassandra.sslport1
+       cassandraConf = '{0}/conf/cassandra.yaml' if numaNode == 0 else '{0}/conf1/cassandra.yaml'
+       cassandraConf = cassandraConf.format(Cassandra.casdir)
 
-       if len(server) == 0:
+       if len(servers) == 0:
            continue
 
        for host in servers:
@@ -198,7 +217,6 @@ def confCassandraCluster():
           templateconf = templateconf.replace("casstorageport", storageport)
           templateconf = templateconf.replace("cassslport", sslport)
 
-          cassandraConf = '{0}/conf/cassandra.yaml'.format(Cassandra.casdir)
           with open(cassandraConf, 'w') as f:
              f.write(templateconf)
              f.close()
@@ -238,12 +256,12 @@ def startCassandra():
     # startup nodes on NUMA 1
         for server in Storage.servers1:
             obs = Observer(observerString)
-            nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0}".format(start_cas_cmd), observers=[obs])
+            nodeClient = ThreadedClients([server], "numactl -m 1 -N 1 {0} -Dcassandra.config=file:///{1}/conf1".format(start_cas_cmd, Cassandra.casdir), observers=[obs])
             nodeClient.start()
             obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
 
-    return [seedClient] + nodeClients
+    return nodeClients + [seedClient]
 
 def confRamcloud():
     copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
@@ -253,7 +271,7 @@ def confRamcloud():
     deleteClient = ThreadedClients(Storage.servers, "rm -rf {0} {1}".format(Ramcloud.backupfile, Ramcloud.backupfile1), root=True)
     deleteClient.start()
     deleteClient.join()
-
+    
     confZk()
 
 def startRamcloud():
@@ -268,7 +286,7 @@ def startRamcloud():
     # create observer list
     storageObs = []
     for i in range(len(Storage.servers) + len(Storage.servers1)):
-        storageObs = storageObs + [Observer("Server " + str(i) + ".0 is up")]
+        storageObs = storageObs + [Observer("Server " + str(i+1) + ".0 is up")]
 
     nodeClients = []
     storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
@@ -282,7 +300,7 @@ def startRamcloud():
 
     # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
-        storage_cmd = "LD_LIBRARY_PATH={3} numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
+        storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
         storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1, Ramcloud.boost_lib)
         for server in Storage.servers1:
             nodeClient = ThreadedClients([server],  storage_cmd.format(server))
@@ -293,7 +311,7 @@ def startRamcloud():
     for storageOb in storageObs:
         storageOb.waitFor(1)
 
-    return [zkClient, masterClient] + nodeClients
+    return  nodeClients + [masterClient, zkClient]
 
 def confKudu():
    if Kudu.clean:
@@ -313,6 +331,9 @@ def startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObse
     masterObservers = []
     if len(masterObserverString) > 0:
         masterObservers = [Observer(masterObserverString)]
+
+    # if Storage.storage == Hbase:
+    #    masterObservers.append(Observer("Master has completed initialization"))
 
     mclient = ThreadedClients([Storage.master], "{0}numactl -m 0 -N 0 {1}".format(envVars, master_cmd), observers=masterObservers)
     mclient.start()
@@ -337,59 +358,56 @@ def startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObse
     else:
         time.sleep(2)
 
-    return [mclient, tclient, tclient1]
+    if Storage.storage == Hbase:
+        time.sleep(5)
+
+    return [tclient, tclient1, mclient]
 
 def startHdfs():
-    nn_format_cmd = "numactl -m 0 -N 0 {0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
-    nnFormatClients = ThreadedClients([Storage.master], nn_format_cmd, root=True)
-    nnFormatClients.start()
-    nnFormatClients.join()
-
     javaHome = "JAVA_HOME={0} ".format(General.javahome)
     masterObs = "NameNode RPC up at"
-    nn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
+    master_cmd = "{0}/bin/hdfs namenode".format(Hadoop.hadoopdir)
     slaveObs = "Acknowledging ACTIVE Namenode"
-    dn_start_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
+    server_cmd = "{0}/bin/hdfs datanode".format(Hadoop.hadoopdir)
     numa0Args = ""
-    numa1Args = "-Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.datadir1)
-
-    return startStorageThreads(nn_start_cmd, dn_start_cmd, numa0Args, numa1Args, masterObs, slaveObs, javaHome) 
+    numa1Args = "-Dhadoop.log.dir={0} -Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.datadir1)
+    return startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObs, slaveObs, javaHome) 
 
 def startHbaseThreads():
-    hdfsClients = startHdfs()
     zkClient = startZk()
+    hdfsClients = startHdfs()
 
     # starting Hbase Threads
-    javaHome = "JAVA_HOME={0} ".format(General.javahome)
     masterObs = "Waiting for region servers count to settle"
-    master_cmd = "numactl -m 0 -N 0 {0}/bin/hbase master start".format(Hbase.hbasedir)
-    regionObs = "Post open deploy tasks for hbase:namespace"
-    region_cmd = "numactl -m 0 -N 0 {0}/bin/hbase regionserver start".format(Hbase.hbasedir)
-    numa0Args = ""
-    numa1Args = "-Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021".format(Hadoop.datadir1)
-    hbaseClients = startStorageThreads(master_cmd, region_cmd, numa0Args, numa1Args, masterObs, regionObs, javaHome)
-    return [hdfsClients, zkClient, hbaseClients]
+    master_cmd = "{0}/bin/hbase master start".format(Hbase.hbasedir)
+    regionObs = "wal.FSHLog: Rolled WAL"
+    region_cmd = "{0}/bin/hbase regionserver".format(Hbase.hbasedir)
+    numa0Args = "start"
+    numa1Args = "-Dhadoop.log.dir={0} -Dhadoop.tmp.dir={0} -Ddfs.datanode.address=0.0.0.0:50011 -Ddfs.datanode.http.address=0.0.0.0:50081 -Ddfs.datanode.ipc.address=0.0.0.0:50021 -Dhbase.regionserver.port=16021 -Dhbase.regionserver.info.port=16031 start".format(Hadoop.datadir1)
+    hbaseClients = startStorageThreads(master_cmd, region_cmd, numa0Args, numa1Args, masterObs, regionObs)
+    return hbaseClients + hdfsClients + [zkClient] 
 
 def startStorage():
+    # to be on the safe side, first unmount the drives if they are still mounted for whatever reason
+    unmount_memfs()
+    javaHome = ""
+    masterObs = ""
+    storageObs = ""
+    numa0Args = ""
+    numa1Args = ""
+
     if Storage.storage == Kudu:
         confKudu()
         master_cmd  = '/mnt/local/tell/kudu_install/bin/kudu-master --fs_data_dirs={0} --fs_wal_dir={0} --block_manager=file'.format(Kudu.master_dir)
         server_cmd = '/mnt/local/tell/kudu_install/bin/kudu-tserver'
         numa0Args = "--fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1}".format(Kudu.tserver_dir, Storage.master)
         numa1Args = "--fs_data_dirs={0} --fs_wal_dir={0} --block_cache_capacity_mb 51200 --tserver_master_addrs {1} --rpc_bind_addresses=0.0.0.0:7049 --webserver_port=8049".format(Kudu.tserver_dir1, Storage.master)
-        masterObs = ""
-        storageObs = ""
     elif Storage.storage == TellStore:
         TellStore.rsyncBuild()
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
-        numa0Args = ""
         numa1Args = '-p 7240'
-        masterObs = ""
         storageObs = "Initialize network server"
-    elif Storage.storage == Ramcloud:
-        confRamcloud()
-        return startRamcloud()
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()
@@ -399,15 +417,22 @@ def startStorage():
     elif Storage.storage == Cassandra:
         confCassandraCluster()
         return startCassandra()
-    return startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObs, storageObs)
+    elif Storage.storage == Ramcloud:
+        confRamcloud()
+        return startRamcloud()
+    return startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObs, storageObs, javaHome)
 
-def exitGracefully(signal, frame):
-    stop_java_unmount_memfs()
-    sys.exit(0)
+def exitGracefully(storageClients, signal, frame):
+    print ""
+    print "\033[1;31mShutting down Storage\033[0m"
+    for client in storageClients:
+        client.kill()
+    unmount_memfs()
+    exit(0)
         
 if __name__ == "__main__":
     storageClients = startStorage()
-    signal.signal(signal.SIGINT, exitGracefully)
+    signal.signal(signal.SIGINT, partial(exitGracefully, storageClients))
     print "\033[1;31mStorage started\033[0m"
     print "\033[1;31mHit Ctrl-C to shut it down\033[0m"
     for client in storageClients:
