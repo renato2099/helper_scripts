@@ -190,57 +190,69 @@ def confCassandraCluster():
     dirClient.join()
 
     # copy all conf files over, cassandra.yaml will be overwritten later
-    copyClient = ThreadedClients(Storage.servers1, "cp -rf {0}/conf/* {0}/conf1/".format(Cassandra.casdir))
+    os.system("cp -a {0}/conf/* {0}/conf1/".format(Cassandra.casdir))
+    copyClient = ThreadedClients(Storage.servers1, "cp -a {0}/conf/* {0}/conf1/".format(Cassandra.casdir))
     copyClient.start()
     copyClient.join()
 
+    # we also have to change cassandra-env.sh
+    f = open('{0}/conf/cassandra-env.sh'.format(Cassandra.casdir), 'r')
+    templateEnv = f.read()
+    f.close()
+    templateEnv = templateEnv.replace('JMX_PORT="7199"', 'JMX_PORT="7198"')
+    cassandraEnv = '{0}/conf1/cassandra-env.sh'.format(Cassandra.casdir)
+    with open (cassandraEnv, 'w') as f:
+        f.write(templateEnv)
+        f.close()
+    copyToHost(Storage.servers1, cassandraEnv)
+        
     for numaNode in [0,1]:
-       servers = Storage.servers if numaNode == 0 else Storage.servers1
-       datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
-       logdir = Cassandra.logdir if numaNode == 0 else Cassandra.logdir1
-       nativeport = Cassandra.nativeport if numaNode == 0 else Cassandra.nativeport1
-       rpcport = Cassandra.rpcport if numaNode == 0 else Cassandra.rpcport1
-       storageport = Cassandra.storageport if numaNode == 0 else Cassandra.storageport1
-       sslport = Cassandra.sslport if numaNode == 0 else Cassandra.sslport1
-       cassandraConf = '{0}/conf/cassandra.yaml' if numaNode == 0 else '{0}/conf1/cassandra.yaml'
-       cassandraConf = cassandraConf.format(Cassandra.casdir)
+        servers = Storage.servers if numaNode == 0 else Storage.servers1
+        datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
+        logdir = Cassandra.logdir if numaNode == 0 else Cassandra.logdir1
+        nativeport = Cassandra.nativeport if numaNode == 0 else Cassandra.nativeport1
+        rpcport = Cassandra.rpcport if numaNode == 0 else Cassandra.rpcport1
+        storageport = Cassandra.storageport if numaNode == 0 else Cassandra.storageport1
+        sslport = Cassandra.sslport if numaNode == 0 else Cassandra.sslport1
+        cassandraConf = '{0}/conf/cassandra.yaml' if numaNode == 0 else '{0}/conf1/cassandra.yaml'
+        cassandraConf = cassandraConf.format(Cassandra.casdir)
 
-       if len(servers) == 0:
-           continue
+        if len(servers) == 0:
+            continue 
 
-       for host in servers:
-          f = open('cassandra.yaml.template', 'r')
-          templateconf = f.read()
-          f.close()
+        for host in servers:
+            f = open('cassandra.yaml.template', 'r')
+            templateconf = f.read()
+            f.close()
 
-          templateconf = templateconf.replace("casseeds", "\"" + Storage.servers[0] + "\"")
-          templateconf = templateconf.replace("caslistenaddr", host)
-          templateconf = templateconf.replace("casdatadir", datadir)
-          templateconf = templateconf.replace("caslogdir", logdir)
-          templateconf = templateconf.replace("casnativeport", nativeport)
-          templateconf = templateconf.replace("casrpcport", rpcport)
-          templateconf = templateconf.replace("casstorageport", storageport)
-          templateconf = templateconf.replace("cassslport", sslport)
+            templateconf = templateconf.replace("casseeds", "\"" + Storage.servers[0] + "\"")
+            templateconf = templateconf.replace("caslistenaddr", host)
+            templateconf = templateconf.replace("casdatadir", datadir)
+            templateconf = templateconf.replace("caslogdir", logdir)
+            templateconf = templateconf.replace("casnativeport", nativeport)
+            templateconf = templateconf.replace("casrpcport", rpcport)
+            templateconf = templateconf.replace("casstorageport", storageport)
+            templateconf = templateconf.replace("cassslport", sslport)
 
-          with open(cassandraConf, 'w') as f:
-             f.write(templateconf)
-             f.close()
-          copyToHost([host], cassandraConf)
-       
-       mkClients = ThreadedClients(servers, "mkdir -p {0}".format(datadir), root=True)
-       mkClients.start()
-       mkClients.join()
-       mntClients = ThreadedClients(servers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, datadir), root=True)
-       mntClients.start()
-       mntClients.join()
-       mkClients = ThreadedClients(servers , "mkdir -p {0}".format(logdir), root=True)
-       mkClients.start()
-       mkClients.join()
+            with open(cassandraConf, 'w') as f:
+                f.write(templateconf)
+                f.close()
+            copyToHost([host], cassandraConf)
+
+        mkClients = ThreadedClients(servers, "mkdir -p {0}".format(datadir), root=True)
+        mkClients.start()
+        mkClients.join()
+        mntClients = ThreadedClients(servers, "mount -t tmpfs -o size={0}G tmpfs {1}".format(Cassandra.datadirSz, datadir), root=True)
+        mntClients.start()
+        mntClients.join()
+        mkClients = ThreadedClients(servers , "mkdir -p {0}".format(logdir), root=True)
+        mkClients.start()
+        mkClients.join()
 
 def startCassandra():
     observerString = "No host ID found"
     start_cas_cmd = "{0}/bin/cassandra -f".format(Cassandra.casdir)
-    javaHome = "JAVA_HOME={0} ".format(General.javahome)
+    javaHome = "JAVA_HOME={0}".format(General.javahome)
 
     # startup seed node
     obs = Observer(observerString)
@@ -262,7 +274,7 @@ def startCassandra():
     # startup nodes on NUMA 1
         for server in Storage.servers1:
             obs = Observer(observerString)
-            nodeClient = ThreadedClients([server], '{3} CASSANDRA_CONF={1}/conf1 LOCAL_JMX=yes JMX_PORT={2} numactl -m 1 -N 1 {0} -Dcassandra.logdir={4}'.format(start_cas_cmd, Cassandra.casdir, Cassandra.jmxport1, javaHome, Cassandra.logdir1), observers=[obs])
+            nodeClient = ThreadedClients([server], '{2} CASSANDRA_CONF={1}/conf1 numactl -m 1 -N 1 {0} -Dcassandra.logdir={3}'.format(start_cas_cmd, Cassandra.casdir, javaHome, Cassandra.logdir1), observers=[obs])
             nodeClient.start()
             obs.waitFor(1)
             nodeClients = nodeClients + [nodeClient]
@@ -270,19 +282,28 @@ def startCassandra():
     return nodeClients + [seedClient]
 
 def confRamcloud():
-    copyClient = ThreadedClients(Storage.servers + Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
-    copyClient.start()
-    copyClient.join()
-    
-    deleteClient = ThreadedClients(Storage.servers, "rm -rf {0} {1}".format(Ramcloud.backupfile, Ramcloud.backupfile1), root=True)
+    deleteClient = ThreadedClients(Storage.servers, "rm -rf {0}".format(Ramcloud.backupdir), root=True)
     deleteClient.start()
     deleteClient.join()
     
+    deleteClient = ThreadedClients(Storage.servers1, "rm -rf {0}".format(Ramcloud.backupdir1), root=True)
+    deleteClient.start()
+    deleteClient.join()
+    
+    copyClient = ThreadedClients(Storage.servers, "mkdir -p {0}".format(Ramcloud.backupdir), root=True)
+    copyClient.start()
+    copyClient.join()
+    
+    copyClient = ThreadedClients(Storage.servers1, "mkdir -p {0}".format(Ramcloud.backupdir1), root=True)
+    copyClient.start()
+    copyClient.join()
+
     confZk()
 
 def startRamcloud():
     zkClient = startZk()
-    master_cmd = "LD_LIBRARY_PATH={3} numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, Ramcloud.boost_lib)
+
+    master_cmd = "LD_LIBRARY_PATH={3} numactl -m 0 -N 0 {0}/coordinator -C infrc:host={1}-infrc,port=11100 -x zk:{1}:{2} --timeout {4}".format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, Ramcloud.boost_lib, Ramcloud.timeout)
 
     masterObs = Observer("Memory usage now")
     masterClient = ThreadedClients([Storage.master], master_cmd, observers=[masterObs])
@@ -295,8 +316,8 @@ def startRamcloud():
         storageObs = storageObs + [Observer("Server " + str(i+1) + ".0 is up")]
 
     nodeClients = []
-    storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
-    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile, Ramcloud.boost_lib)
+    storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 0 -N 0 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0 --timeout {8}"
+    storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport, Ramcloud.memorysize, Ramcloud.backupfile, Ramcloud.boost_lib, Ramcloud.timeout)
 
     # startup nodes on NUMA 0
     for server in Storage.servers:
@@ -306,8 +327,8 @@ def startRamcloud():
 
     # startup nodes on NUMA 1
     if len(Storage.servers1) > 0:
-        storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0"
-        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1, Ramcloud.boost_lib)
+        storage_cmd = "LD_LIBRARY_PATH={7} numactl -m 1 -N 1 {0}/server -L infrc:host={3}-infrc,port={4} -x zk:{1}:{2} --totalMasterMemory {5} -f {6} --segmentFrames 10000 -r 0 --timeout {8}"
+        storage_cmd = storage_cmd.format(Ramcloud.ramclouddir, Storage.master, Zookeeper.clientport, "{0}", Ramcloud.storageport1, Ramcloud.memorysize, Ramcloud.backupfile1, Ramcloud.boost_lib, Ramcloud.timeout)
         for server in Storage.servers1:
             nodeClient = ThreadedClients([server],  storage_cmd.format(server))
             nodeClient.start()

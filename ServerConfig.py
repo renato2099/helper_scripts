@@ -92,7 +92,7 @@ class Hadoop:
 class Zookeeper:
     #zkserver      = Storage.master
     zkdir         = "/mnt/local/tell/zookeeper"
-    ticktime      = '6000'
+    ticktime      = '60000'
     datadir       = '/mnt/data/zk_data'
     clientport    = '2181'
     maxclients    = '6000'
@@ -135,12 +135,14 @@ class Hive:
 class Ramcloud:
     ramclouddir       = "/mnt/local/tell/RAMCloud/obj.master"
     backupdir         = "/mnt/data/rc_data"
+    backupdir1        = "/mnt/data/rc_data1"
     backupfile        = backupdir + "/rc.bk"
-    backupfile1       = backupdir + "/rc1.bk"
+    backupfile1       = backupdir1 + "/rc.bk"
     storageport       = 1101
     storageport1      = 1102
     memorysize        = 48000
     boost_lib         = "/mnt/local/tell/boost/lib"
+    timeout           = 12000
 
 #############################
 # Used Storage Implementation
