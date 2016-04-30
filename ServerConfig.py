@@ -171,8 +171,9 @@ class Microbench:
     noWarmUp          = False
     infinioBatch      = 16
     txBatch           = 50
-    result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     onlyQ1            = True
+    oltpWaitTime      = 0
+    result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 
     @staticmethod

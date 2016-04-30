@@ -100,6 +100,12 @@ def configGetPut():
     Microbench.updateProb = 0.166
     Microbench.deleteProb = 0.166
 
+def configGetOnly():
+    configGetPut()
+    Microbench.insertProb = 0.0
+    Microbench.updateProb = 0.0
+    Microbench.deleteProb = 0.0
+
 def configMixed():
     configGetPut()
     Microbench.analyticalClients = 1
@@ -117,10 +123,7 @@ def experiment1a_singlebatch(outdir):
     Microbench.infinioBatch = old
 
 def experiment1b(outdir):
-    configGetPut()
-    Microbench.insertProb = 0.0
-    Microbench.updateProb = 0.0
-    Microbench.deleteProb = 0.0
+    configGetOnly()
     runMBench(outdir)
 
 def experiment2a(outdir):
@@ -129,6 +132,11 @@ def experiment2a(outdir):
 
 def experiment3(outdir):
     configGetPut()
+    Microbench.analyticalClients = 1
+    runMBench(outdir)
+
+def experiment3a(outdir):
+    configGetOnly()
     Microbench.analyticalClients = 1
     runMBench(outdir)
 
@@ -232,6 +240,16 @@ def runAllBenchmarks(outdir, experiments):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
+    if len(experiments) == 0 or "experiment3a" in experiments:
+        # Experiment 3a
+        print "#######################################"
+        print " RUN EXPERIMENT 3a"
+        print "#######################################"
+        o = '{0}/experiment3a'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment3), o, [4])
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exitGracefully)
