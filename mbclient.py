@@ -30,7 +30,7 @@ def startMBClient(populate = False, uoutFile = None):
 
     probabilities = "-i {0} -d {1} -u {2}".format(Microbench.insertProb, Microbench.deleteProb, Microbench.updateProb)
     
-        cmd = '{0}/watch/microbench/mbclient -H "{1}" -s {2} -c {3} -t {4} -a {5} -o {6} -b {7} -w {8} {9}'.format(TellStore.builddir, Microbench.getServerList(), Microbench.scaling, Microbench.clients, Microbench.clientThreads, Microbench.analyticalClients, Microbench.oltpWaitTime, outfile + ".db", Microbench.txBatch, probabilities)
+    cmd = '{0}/watch/microbench/mbclient -H "{1}" -s {2} -c {3} -t {4} -a {5} -o {6} -b {7} -w {8} {9}'.format(TellStore.builddir, Microbench.getServerList(), Microbench.scaling, Microbench.clients, Microbench.clientThreads, Microbench.analyticalClients, outfile + ".db", Microbench.txBatch, Microbench.oltpWaitTime, probabilities)
     if Microbench.onlyQ1:
         cmd += ' -q'
     if Microbench.noWarmUp:
