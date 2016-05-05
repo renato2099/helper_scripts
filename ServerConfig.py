@@ -43,7 +43,7 @@ class TellStore:
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 2*1024*1024*1024 # 10GB
+    scanMemory         = 2*1024*1024*1024 # 2GB
     scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3

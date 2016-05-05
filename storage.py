@@ -434,7 +434,7 @@ def startStorage():
         master_cmd = "{0}/commitmanager/server/commitmanagerd".format(TellStore.builddir)
         server_cmd = "{0}/tellstore/server/tellstored-{1} -l INFO --scan-threads {2} --network-threads 1 --gc-interval {5} -m {3} -c {4}".format(TellStore.builddir, TellStore.approach, TellStore.scanThreads, TellStore.memorysize, TellStore.hashmapsize, TellStore.gcInterval)
         numa1Args = '-p 7240'
-        storageObs = "Initialize network server"
+        storageObs = "Storage ready"
     elif Storage.storage == Hadoop:
         confHdfs()
         return startHdfs()
