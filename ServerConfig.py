@@ -39,11 +39,11 @@ class Kudu:
 class TellStore:
     approach           = "columnmap"
     defaultMemorysize  = 0xC90000000 if approach == "logstructured" else 0xE00000000
-    defaultHashmapsize = 0x20000000  if approach == "logstructured" else 0x20000
+    defaultHashmapsize = 0x20000000  if approach == "logstructured" else 0x2000000
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 2*1024*1024*1024 # 1GB
+    scanMemory         = 2*1024*1024*1024 # 10GB
     scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3
@@ -70,13 +70,15 @@ class TellStore:
             rsync(host)
 
     @staticmethod
-    def setDefaultMemorySize():
+    def setDefaultMemorySizeAndScanThreads():
         if TellStore.approach == "logstructured":
             TellStore.memorysize  = 0xC90000000
             TellStore.hashmapsize = 0x20000000
+            TellStore.scanThreads = 3
         else:
             TellStore.memorysize  = 0xE00000000
-            TellStore.hashmapsize = 0x20000
+            TellStore.hashmapsize = 0x2000000
+            TellStore.scanThreads = 2
 
 
 class Hadoop:
@@ -148,7 +150,7 @@ class Ramcloud:
 # Used Storage Implementation
 #############################
 
-Storage.storage = Ramcloud
+Storage.storage = TellStore
 
 ###################
 # Processing Server
@@ -170,9 +172,9 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 50
-    onlyQ1            = True
-    oltpWaitTime      = 0
+    txBatch           = 200
+    onlyQ1            = False
+    oltpWaitTime      = 0 # (50,000 per sec), 11900 (500,000 per sec), 2975000 (2000 per sec)
     result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 

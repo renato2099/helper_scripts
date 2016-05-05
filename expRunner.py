@@ -131,14 +131,23 @@ def experiment2a(outdir):
     runMBench(outdir)
 
 def experiment3(outdir):
-    configGetPut()
-    Microbench.analyticalClients = 1
+    configMixed()
     runMBench(outdir)
 
 def experiment3a(outdir):
+    oldValue = Microbench.oltpWaitTime
+    Microbench.oltpWaitTime = 148750
     configGetOnly()
     Microbench.analyticalClients = 1
     runMBench(outdir)
+    Microbench.oltpWaitTime = oldValue
+
+def experiment3b(outdir):
+    oldValue = Microbench.oltpWaitTime
+    Microbench.oltpWaitTime = 148750
+    configMixed()
+    runMBench(outdir)
+    Microbench.oltpWaitTime = oldValue
 
 def varyBatching(experiment, outdir):
     for i in [1,2,4,8,16,32,64]:
@@ -171,7 +180,7 @@ def runOnTell(experiment, outdir, numNodes):
     Storage.storage = TellStore
     for approach in ["columnmap", "rowstore", "logstructured"]:
         TellStore.approach = approach
-        TellStore.setDefaultMemorySize()
+        TellStore.setDefaultMemorySizeAndScanThreads()
         for num in numNodes:
             experiment(outdir, num)
 
@@ -239,9 +248,9 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
+        runOn(partial(scalingExperiment, experiment3), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3a" in experiments:
-        # Experiment 3a
+        # Experiment 3a (same as Exp3, but OLTP limited to 40,000 gets per sec)
         print "#######################################"
         print " RUN EXPERIMENT 3a"
         print "#######################################"
@@ -249,7 +258,18 @@ def runAllBenchmarks(outdir, experiments):
         if os.path.isdir(o):
             raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment3), o, [4])
+        runOn(partial(scalingExperiment, experiment3a), o, [4])
+    if len(experiments) == 0 or "experiment3b" in experiments:
+        # Experiment 3b (same as Exp3, but OLTP limited to 40,000 gets/puts per sec)
+        print "#######################################"
+        print " RUN EXPERIMENT 3b"
+        print "#######################################"
+        o = '{0}/experiment3b'.format(outdir)
+        if os.path.isdir(o):
+            raise RuntimeError('{0} exists'.format(o))
+        os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment3b), o, [4])
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exitGracefully)
