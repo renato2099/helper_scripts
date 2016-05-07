@@ -43,7 +43,7 @@ class TellStore:
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 2*1024*1024*1024 # 2GB
+    scanMemory         = 10*1024*1024*1024 # 10GB
     scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3
@@ -150,7 +150,7 @@ class Ramcloud:
 # Used Storage Implementation
 #############################
 
-Storage.storage = TellStore
+Storage.storage = Kudu
 
 ###################
 # Processing Server
@@ -172,9 +172,9 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 200
+    txBatch           = 50
     onlyQ1            = False
-    oltpWaitTime      = 0 # (50,000 per sec), 11900 (500,000 per sec), 2975000 (2000 per sec)
+    oltpWaitTime      = 0 # for batch size 50: 119000 (50,000 per sec), 11900 (500,000 per sec), 2975000 (2000 per sec)
     result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 

@@ -136,7 +136,7 @@ def experiment3(outdir):
 
 def experiment3a(outdir):
     oldValue = Microbench.oltpWaitTime
-    Microbench.oltpWaitTime = 148750
+    Microbench.oltpWaitTime = 3400 * Microbench.txBatch # 35000 per sec for 119 clients
     configGetOnly()
     Microbench.analyticalClients = 1
     runMBench(outdir)
@@ -144,7 +144,7 @@ def experiment3a(outdir):
 
 def experiment3b(outdir):
     oldValue = Microbench.oltpWaitTime
-    Microbench.oltpWaitTime = 148750
+    Microbench.oltpWaitTime = 3400 * Microbench.txBatch # 35000 per sec for 119 clients
     configMixed()
     runMBench(outdir)
     Microbench.oltpWaitTime = oldValue
@@ -179,6 +179,7 @@ def scalingExperiment(experiment, outdir, numNodes):
 def runOnTell(experiment, outdir, numNodes):
     Storage.storage = TellStore
     for approach in ["columnmap", "rowstore", "logstructured"]:
+    #for approach in ["logstructured"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySizeAndScanThreads()
         for num in numNodes:
@@ -272,7 +273,6 @@ def runAllBenchmarks(outdir, experiments):
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, exitGracefully)
     out = 'results'
     parser = ArgumentParser()
     parser.add_argument("-o", help="Output directory", default=out)

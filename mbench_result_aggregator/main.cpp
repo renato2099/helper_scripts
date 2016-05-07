@@ -36,7 +36,7 @@ void assertSql(int code, const char* file, int line) {
         }
 }
 
-uint   tpFactor   = 200;
+uint   tpFactor   = 50;
 double onemillion = 1000000.0;
 
 template<class T>
@@ -132,6 +132,7 @@ int main(int argc, const char* argv[]) {
         std::cerr << "USAGE: resaggr sqlitedb\n";
         return 1;
     }
+    std::cout << "[WARNING] Number assume a tx batch size of " << tpFactor << ". Make sure this aligns with your experiment config.\n";
     sqlOk(sqlite3_config(SQLITE_CONFIG_SINGLETHREAD));
     std::cout << "Transaction,Throughput,Response Time, Standard Deviation,Median,99% Quantile,95% Quantile,1% Quantile,5% Quantile,25% Quantile,75% Quantile,Min,Max\n";
     for (int i = 1; i < argc; ++i) {
