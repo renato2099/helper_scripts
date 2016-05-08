@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
+
 from ServerConfig import General
 from ServerConfig import Storage
-from ServerConfig import Microbench
 from ServerConfig import TellStore
+from ServerConfig import Kudu
+from ServerConfig import Hbase
+from ServerConfig import Cassandra
+from ServerConfig import Ramcloud
+
+from ServerConfig import Microbench
 from mbclient import startMBClient
 from mbserver import startMBServer
 from storage import *
@@ -189,7 +195,7 @@ def runOnOthers(experiment, outdir, numNodes):
     for num in numNodes:
        experiment(outdir,num)
 
-def runAllBenchmarks(outdir, experiments):
+def runAllBenchmarks(outdir, experiments, ignore_warnings):
     if Storage.storage == TellStore:
         runOn = runOnTell
     else:
@@ -200,7 +206,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment1a'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment1b" in experiments:
@@ -210,7 +219,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment1b'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
     if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
@@ -218,7 +230,10 @@ def runAllBenchmarks(outdir, experiments):
         # No experiment needed here (inserts are measured for all experiments)
         # o = '{0}/experiment1c'.format(outdir)
         # if os.path.isdir(o):
-        #     raise RuntimeError('{0} exists'.format(o))
+        #     if ignore_warnings:
+        #         print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+        #     else:
+        #         raise RuntimeError('{0} exists'.format(o))
         # os.mkdir(o)
         # runOnTell(partial(scalingExperiment, experiment1c), o, [1,2,3,4])
         # Experiment 1d
@@ -227,7 +242,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment1d'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
     if len(experiments) == 0 or "experiment2a" in experiments:
@@ -237,7 +255,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment2a'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment2a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3" in experiments:
@@ -247,7 +268,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment3'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3a" in experiments:
@@ -257,7 +281,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment3a'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3a), o, [4])
     if len(experiments) == 0 or "experiment3b" in experiments:
@@ -267,7 +294,10 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment3b'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
         os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3b), o, [4])
 
@@ -275,10 +305,31 @@ def runAllBenchmarks(outdir, experiments):
 if __name__ == "__main__":
     out = 'results'
     parser = ArgumentParser()
-    parser.add_argument("-o", help="Output directory", default=out)
+    parser.add_argument("-o", dest='out', help="Output directory", default=out)
+    parser.add_argument("-i", dest='ignore_warnings', help="Ignore warnings", action="store_true")
     parser.add_argument('experiments', metavar='E', type=str, nargs='*', help='Experiments to run (none defaults to all)')
+    parser.add_argument("-a", dest='approaches', type=str, nargs='*', help=' storage approaches to run with (none defaults to Storage.storage)')
     args = parser.parse_args()
-    if not os.path.isdir(out):
-        os.mkdir(out)
-    runAllBenchmarks(out, args.experiments)
+    if not os.path.isdir(args.out):
+        os.mkdir(args.out)
+    if args.approaches == None:
+        args.approaches = [Storage.storage().__class__.__name__.lower()]
+    for app in args.approaches:
+        if app == "tellstore":
+            Storage.storage = TellStore
+        elif app == "kudu":
+            Storage.storage = Kudu
+        elif app == "hbase":
+            Storage.storage = Hbase
+        elif app == "cassandra":
+            Storage.storage = Cassandra
+        elif app == "ramcloud":
+            Storage.storage = Ramcloud
+        else:
+            print "[WARNING] Approach '" + app + "' is unknown. Will be ignored.\n"
+            continue
+        print "#######################################"
+        print "Running benchmarks for " + Storage.storage().__class__.__name__.upper()
+        print "#######################################\n"
+        runAllBenchmarks(args.out, args.experiments, args.ignore_warnings)
 

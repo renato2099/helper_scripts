@@ -150,7 +150,7 @@ class Ramcloud:
 # Used Storage Implementation
 #############################
 
-Storage.storage = Kudu
+Storage.storage = TellStore
 
 ###################
 # Processing Server
