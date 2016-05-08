@@ -183,7 +183,7 @@ def scalingExperiment(experiment, outdir, numNodes):
     experiment(outdir)
 
 def runOnTell(experiment, outdir, numNodes):
-    Storage.storage = TellStore
+    Microbench.txBatch = 200
     for approach in ["columnmap", "rowstore", "logstructured"]:
     #for approach in ["logstructured"]:
         TellStore.approach = approach
@@ -192,6 +192,7 @@ def runOnTell(experiment, outdir, numNodes):
             experiment(outdir, num)
 
 def runOnOthers(experiment, outdir, numNodes):
+    Microbench.txBatch = 50
     for num in numNodes:
        experiment(outdir,num)
 

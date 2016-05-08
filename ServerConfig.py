@@ -172,7 +172,7 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 50
+    txBatch           = 200
     onlyQ1            = False
     oltpWaitTime      = 0 # for batch size 50: 119000 (50,000 per sec), 11900 (500,000 per sec), 2975000 (2000 per sec)
     result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
