@@ -185,7 +185,6 @@ def scalingExperiment(experiment, outdir, numNodes):
 def runOnTell(experiment, outdir, numNodes):
     Microbench.txBatch = 200
     for approach in ["columnmap", "rowstore", "logstructured"]:
-    #for approach in ["logstructured"]:
         TellStore.approach = approach
         TellStore.setDefaultMemorySizeAndScanThreads()
         for num in numNodes:
@@ -211,7 +210,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment1b" in experiments:
         # Experiment 1b
@@ -224,9 +224,10 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
-    if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
+    #if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
         # Experiment 1c
         # No experiment needed here (inserts are measured for all experiments)
         # o = '{0}/experiment1c'.format(outdir)
@@ -235,8 +236,10 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
         #         print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
         #     else:
         #         raise RuntimeError('{0} exists'.format(o))
-        # os.mkdir(o)
+        # else:
+        #     os.mkdir(o)
         # runOnTell(partial(scalingExperiment, experiment1c), o, [1,2,3,4])
+    if len(experiments) == 0 or "experiment1d" in experiments:
         # Experiment 1d
         print "#######################################"
         print " RUN EXPERIMENT 1d"
@@ -247,7 +250,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
     if len(experiments) == 0 or "experiment2a" in experiments:
         # Experiment 2a
@@ -260,7 +264,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment2a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3" in experiments:
         # Experiment 3
@@ -273,7 +278,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3a" in experiments:
         # Experiment 3a (same as Exp3, but OLTP limited to 40,000 gets per sec)
@@ -286,7 +292,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3a), o, [4])
     if len(experiments) == 0 or "experiment3b" in experiments:
         # Experiment 3b (same as Exp3, but OLTP limited to 40,000 gets/puts per sec)
@@ -299,7 +306,8 @@ def runAllBenchmarks(outdir, experiments, ignore_warnings):
                 print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
             else:
                 raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment3b), o, [4])
 
 
