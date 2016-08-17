@@ -36,6 +36,6 @@ if __name__ == '__main__':
     parser.add_argument("-P", dest='populate', help="Populate data", action="store_true")
     parser.add_argument("outfile", help="CSV file for results", default="out_sep.csv", nargs='?')
     args = parser.parse_args()
-    client = startSepClient(populate, outfile)
+    client = startSepClient(args.populate, args.outfile)
     client.join()
 
