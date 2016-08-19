@@ -27,4 +27,5 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("outfile", help="CSV file for results", default="out_rta.csv", nargs='?')
     args = parser.parse_args()
+    res = startRtaClient(args.outfile)
     res.join()
