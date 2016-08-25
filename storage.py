@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import sys
 import time
 from threaded_ssh import ThreadedClients
 from pssh import ParallelSSHClient
@@ -108,12 +109,15 @@ def startHbase():
 
 def confHdfs():
     # mount tmpfs for master and servers on numa 0
-    mkClients = ThreadedClients([Storage.master] + Storage.servers, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz), root=True)
+    cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz)
+    mkClients = ThreadedClients([Storage.master] + Storage.servers, cmdHadoopDir, root=True)
     mkClients.start()
     mkClients.join()
 
     # mount tmpfs for servers on numa 1
-    mkClients = ThreadedClients(Storage.servers1, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz), root=True)
+    cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir1) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size{1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz)
+    #mkClients = ThreadedClients(Storage.servers1, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz), root=True)
+    mkClients = ThreadedClients(Storage.servers1, cmdHadoopDir, root=True)
     mkClients.start()
     mkClients.join()
 
@@ -210,13 +214,13 @@ def confCassandraCluster():
     for numaNode in [0,1]:
        servers = Storage.servers if numaNode == 0 else Storage.servers1
        datadir = Cassandra.datadir if numaNode == 0 else Cassandra.datadir1
-       logdir = Cassandra.logdir if numNodes == 0 else Cassandra.logdir1
+       logdir = Cassandra.logdir if numaNode == 0 else Cassandra.logdir1
        nativeport = Cassandra.nativeport if numaNode == 0 else Cassandra.nativeport1
        rpcport = Cassandra.rpcport if numaNode == 0 else Cassandra.rpcport1
        storageport = Cassandra.storageport if numaNode == 0 else Cassandra.storageport1
        sslport = Cassandra.sslport if numaNode == 0 else Cassandra.sslport1
 
-       if len(server) == 0:
+       if len(servers) == 0:
            continue
 
        for host in servers:

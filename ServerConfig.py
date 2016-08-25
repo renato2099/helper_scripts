@@ -22,9 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler04']
+    servers    = ['euler08', 'euler09', 'euler01']
     servers1   = []
-    master     = "euler04"
+    master     = "euler07"
 
 ##########################
 # Storage Implementations
@@ -83,10 +83,13 @@ class Hadoop:
     hdfsport       = '20042'
     #datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
+    #datadir        = "/mnt/local/hadoop_dir"
+    #datadir1        = "/mnt/local/hadoop1_dir"
     datadir        = "/mnt/ramfs/hadoop"
     datadir1        = "/mnt/ramfs/hadoop1"
-    datadirSz      = "100"
+    datadirSz      = "30"
     dfsreplication = "1"
+    ramfs          = True
 
 class Zookeeper:
     #zkserver      = Storage.master
@@ -134,7 +137,7 @@ class Hive:
 # Used Storage Implementation
 #############################
 
-Storage.storage = Cassandra
+Storage.storage = Hadoop
 
 ###################
 # Processing Server
@@ -190,11 +193,12 @@ class Java:
 
 
 class Spark:
-    master         = 'euler11'
-    slaves         = ['euler05', 'euler06', 'euler07', 'euler08', 'euler09', 'euler10']
+    master         = 'euler07'
+    slaves         = ['euler08', 'euler09', 'euler01']
     sparkdir       = "/mnt/local/tell/spark"
     telljava       = General.builddir + "/telljava"
     telljar        = telljava + "/telljava-1.0.jar"
+    useTell        = False
     javahome       = "/mnt/local/tell/java8"
     jarsDir        = "/mnt/local/{0}/spark_jars".format(General.username)
     tmpDir         = "/mnt/data/sparktmp"
