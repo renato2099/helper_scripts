@@ -5,6 +5,7 @@ from ServerConfig import TellStore
 from ServerConfig import Kudu
 from ServerConfig import Cassandra
 from ServerConfig import Hbase
+from ServerConfig import Ramcloud
 from ServerConfig import Microbench
 from ServerConfig import General
 
@@ -32,6 +33,9 @@ def startMBServer(observers):
         cmd = 'java -jar {0}/mbserver_hbase.jar {1}'.format(Microbench.javaDir, params)
         cmd += '-hm {0}'.format(Storage.master)
         cmd += '-zm {0}'.format(Storage.master)
+    elif Storage.storage == Ramcloud:
+        cmd = '{0}/watch/microbench/mbserver_ramcloud {1}'.format(TellStore.builddir, params)
+        cmd += '-c main -l "infrc:host={0}-infrc,port=11100" -x {1}'.format(Storage.master, len(Storage.servers) + len(Storage.servers1))
   
     client0 = ThreadedClients(Microbench.servers0, "{0}numactl -m 0 -N 0 {1}".format(path, cmd), observers=observers)
     client1 = ThreadedClients(Microbench.servers1, "{0}numactl -m 1 -N 1 {1} -p 8712".format(path, cmd), observers=observers)

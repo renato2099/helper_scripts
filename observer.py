@@ -8,11 +8,12 @@ class Observer:
         self.condition = Condition()
         self.numNotifications = 0
 
-    def notify(self, *args):
-        if (self.watch in args[2]):
+    def notify(self, host, line):
+        #print "notify looks for {}, got {}".format(self.watch, line)
+        if (self.watch in line):
             self.condition.acquire()
             self.numNotifications += 1
-            print "Notify"
+            #print "Notify"
             self.condition.notify()
             self.condition.release()
 
@@ -20,9 +21,8 @@ class Observer:
         doneP = 0
         while (doneP < num):
             self.condition.acquire()
-            self.condition.wait()
+            self.condition.wait(1)
             doneP += self.numNotifications
             self.numNotifications = 0
-            print "Notified {0}/{1}".format(doneP, num)
             self.condition.release()
             

@@ -1,16 +1,22 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
+
 from ServerConfig import General
 from ServerConfig import Storage
-from ServerConfig import Microbench
 from ServerConfig import TellStore
+from ServerConfig import Kudu
+from ServerConfig import Hbase
+from ServerConfig import Cassandra
+from ServerConfig import Ramcloud
+
+from ServerConfig import Microbench
 from mbclient import startMBClient
 from mbserver import startMBServer
 from storage import *
 from observer import *
 from functools import partial
-from stop_java_unmount_memfs import stop_java_unmount_memfs
+from unmount_memfs import unmount_memfs
 import time
 import os
 import sys
@@ -20,17 +26,17 @@ import logging
 
 logging.basicConfig()
 
-def exitGracefully(signal, frame):
-    stop_java_unmount_memfs()
-    sys.exit(0)
+if 'threading' in sys.modules:
+        del sys.modules['threading']
+        import gevent
+        import gevent.socket
+        import gevent.monkey
+        gevent.monkey.patch_all()
 
 def sqliteOut():
     storage = Storage.storage().__class__.__name__.lower()
     if Storage.storage == TellStore:
         storage = storage + "_{0}".format(TellStore.approach)
-#     else:
-#         print "Error: current storage not supported"
-#         exit(1)
     numStorages = len(Storage.servers) + len(Storage.servers1)
     numMBServers = len(Microbench.servers0) + len(Microbench.servers1)
     numClients = Microbench.clients
@@ -41,22 +47,10 @@ def sqliteOut():
 
 def runMBench(outdir, onlyPopulation = False):
     # do as for many experiments we have to run
+
     ## start storages
-
-    if Storage.storage == TellStore:
-        stObserver = Observer("Initialize network server")
-    if Storage.storage == Cassandra:
-        stObserver = Observer("No host ID found")
-    else:
-        stObserver = None
-        
-    if stObserver == None:
-       storageClients = startStorage([])
-    else:
-       storageClients = startStorage([stObserver])
-       # wait for notification that they have started
-       stObserver.waitFor(len(Storage.servers) + len(Storage.servers1))
-
+    storageClients = startStorage()
+    signal.signal(signal.SIGINT, partial(exitGracefully, storageClients))
     print "Storage started"
     
     ## start microbenchmark server
@@ -92,8 +86,7 @@ def runMBench(outdir, onlyPopulation = False):
     for client in storageClients:
         client.join()
 
-    if (Storage.storage == Cassandra or Storage.storage == Hadoop or Storage.storage == Hbase):
-        stop_java_unmount_memfs()
+    unmount_memfs()
 
 def configForAnalytics():
     Microbench.analyticalClients = 1
@@ -113,6 +106,12 @@ def configGetPut():
     Microbench.updateProb = 0.166
     Microbench.deleteProb = 0.166
 
+def configGetOnly():
+    configGetPut()
+    Microbench.insertProb = 0.0
+    Microbench.updateProb = 0.0
+    Microbench.deleteProb = 0.0
+
 def configMixed():
     configGetPut()
     Microbench.analyticalClients = 1
@@ -130,10 +129,7 @@ def experiment1a_singlebatch(outdir):
     Microbench.infinioBatch = old
 
 def experiment1b(outdir):
-    configGetPut()
-    Microbench.insertProb = 0.0
-    Microbench.updateProb = 0.0
-    Microbench.deleteProb = 0.0
+    configGetOnly()
     runMBench(outdir)
 
 def experiment2a(outdir):
@@ -141,9 +137,23 @@ def experiment2a(outdir):
     runMBench(outdir)
 
 def experiment3(outdir):
-    configGetPut()
+    configMixed()
+    runMBench(outdir)
+
+def experiment3a(outdir):
+    oldValue = Microbench.oltpWaitTime
+    Microbench.oltpWaitTime = 3400 * Microbench.txBatch # 35000 per sec for 119 clients
+    configGetOnly()
     Microbench.analyticalClients = 1
     runMBench(outdir)
+    Microbench.oltpWaitTime = oldValue
+
+def experiment3b(outdir):
+    oldValue = Microbench.oltpWaitTime
+    Microbench.oltpWaitTime = 3400 * Microbench.txBatch # 35000 per sec for 119 clients
+    configMixed()
+    runMBench(outdir)
+    Microbench.oltpWaitTime = oldValue
 
 def varyBatching(experiment, outdir):
     for i in [1,2,4,8,16,32,64]:
@@ -154,6 +164,7 @@ def varyBatching(experiment, outdir):
 def scalingExperiment(experiment, outdir, numNodes):
     Storage.master = 'euler07'
     Storage.servers = []
+    Storage.servers1 = []
     servers = ['euler04', 'euler05', 'euler06', 'euler02']
     servers.reverse()
     mservers0 = ['euler03', 'euler08', 'euler09', 'euler10', 'euler11', 'euler01']
@@ -172,18 +183,19 @@ def scalingExperiment(experiment, outdir, numNodes):
     experiment(outdir)
 
 def runOnTell(experiment, outdir, numNodes):
-    Storage.storage = TellStore
+    Microbench.txBatch = 200
     for approach in ["columnmap", "rowstore", "logstructured"]:
         TellStore.approach = approach
-        TellStore.setDefaultMemorySize()
+        TellStore.setDefaultMemorySizeAndScanThreads()
         for num in numNodes:
             experiment(outdir, num)
 
 def runOnOthers(experiment, outdir, numNodes):
+    Microbench.txBatch = 50
     for num in numNodes:
        experiment(outdir,num)
 
-def runAllBenchmarks(outdir, experiments):
+def runAllBenchmarks(outdir, experiments, ignore_warnings):
     if Storage.storage == TellStore:
         runOn = runOnTell
     else:
@@ -194,8 +206,12 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment1a'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment1b" in experiments:
         # Experiment 1b
@@ -204,25 +220,38 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment1b'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, experiment1b), o, [1,2,3,4])
-    if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
+    #if (len(experiments) == 0 or "experiment1c" in experiments) and Storage.storage == TellStore:
         # Experiment 1c
         # No experiment needed here (inserts are measured for all experiments)
         # o = '{0}/experiment1c'.format(outdir)
         # if os.path.isdir(o):
-        #     raise RuntimeError('{0} exists'.format(o))
-        # os.mkdir(o)
+        #     if ignore_warnings:
+        #         print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+        #     else:
+        #         raise RuntimeError('{0} exists'.format(o))
+        # else:
+        #     os.mkdir(o)
         # runOnTell(partial(scalingExperiment, experiment1c), o, [1,2,3,4])
+    if len(experiments) == 0 or "experiment1d" in experiments:
         # Experiment 1d
         print "#######################################"
         print " RUN EXPERIMENT 1d"
         print "#######################################"
         o = '{0}/experiment1d'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
         runOn(partial(scalingExperiment, partial(varyBatching, experiment1a)), o, [2])
     if len(experiments) == 0 or "experiment2a" in experiments:
         # Experiment 2a
@@ -231,9 +260,13 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment2a'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment2a), o, [2])
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment2a), o, [1,2,3,4])
     if len(experiments) == 0 or "experiment3" in experiments:
         # Experiment 3
         print "#######################################"
@@ -241,18 +274,71 @@ def runAllBenchmarks(outdir, experiments):
         print "#######################################"
         o = '{0}/experiment3'.format(outdir)
         if os.path.isdir(o):
-            raise RuntimeError('{0} exists'.format(o))
-        os.mkdir(o)
-        runOn(partial(scalingExperiment, experiment3), o, [1, 2, 3, 4])
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment3), o, [1,2,3,4])
+    if len(experiments) == 0 or "experiment3a" in experiments:
+        # Experiment 3a (same as Exp3, but OLTP limited to 40,000 gets per sec)
+        print "#######################################"
+        print " RUN EXPERIMENT 3a"
+        print "#######################################"
+        o = '{0}/experiment3a'.format(outdir)
+        if os.path.isdir(o):
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment3a), o, [4])
+    if len(experiments) == 0 or "experiment3b" in experiments:
+        # Experiment 3b (same as Exp3, but OLTP limited to 40,000 gets/puts per sec)
+        print "#######################################"
+        print " RUN EXPERIMENT 3b"
+        print "#######################################"
+        o = '{0}/experiment3b'.format(outdir)
+        if os.path.isdir(o):
+            if ignore_warnings:
+                print ('[WARNING] {0} exists already and its content might be overwritten now.'.format(o))
+            else:
+                raise RuntimeError('{0} exists'.format(o))
+        else:
+            os.mkdir(o)
+        runOn(partial(scalingExperiment, experiment3b), o, [4])
+
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, exitGracefully)
     out = 'results'
     parser = ArgumentParser()
-    parser.add_argument("-o", help="Output directory", default=out)
+    parser.add_argument("-o", dest='out', help="Output directory", default=out)
+    parser.add_argument("-i", dest='ignore_warnings', help="Ignore warnings", action="store_true")
     parser.add_argument('experiments', metavar='E', type=str, nargs='*', help='Experiments to run (none defaults to all)')
+    parser.add_argument("-a", dest='approaches', type=str, nargs='*', help=' storage approaches to run with (none defaults to Storage.storage)')
     args = parser.parse_args()
-    if not os.path.isdir(out):
-        os.mkdir(out)
-    runAllBenchmarks(out, args.experiments)
+    if not os.path.isdir(args.out):
+        os.mkdir(args.out)
+    if args.approaches == None:
+        args.approaches = [Storage.storage().__class__.__name__.lower()]
+    for app in args.approaches:
+        if app == "tellstore":
+            Storage.storage = TellStore
+        elif app == "kudu":
+            Storage.storage = Kudu
+        elif app == "hbase":
+            Storage.storage = Hbase
+        elif app == "cassandra":
+            Storage.storage = Cassandra
+        elif app == "ramcloud":
+            Storage.storage = Ramcloud
+        else:
+            print "[WARNING] Approach '" + app + "' is unknown. Will be ignored.\n"
+            continue
+        print "#######################################"
+        print "Running benchmarks for " + Storage.storage().__class__.__name__.upper()
+        print "#######################################\n"
+        runAllBenchmarks(args.out, args.experiments, args.ignore_warnings)
 

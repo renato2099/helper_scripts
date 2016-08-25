@@ -33,9 +33,9 @@ class OutputClient(Thread):
     def unregister (self, observer):
         if observer in self.observers:
            self.observers.remove(observer)
-    def notify_observers(self, *args):
+    def notify_observers(self, host, line):
         for obs in self.observers:
-          obs.notify(self, *args)
+          obs.notify(host, line)
 
 class ChildClient(Thread):
     nextPid = 0
@@ -70,6 +70,7 @@ class ChildClient(Thread):
                 oThread = OutputClient(host, output[host]['stderr'], prefix=Color.FAIL, suffix=Color.ENDC, outObs=self.observers)
                 oThread.start()
                 threads.append(oThread)
+                print "started output threads"
             for t in threads:
                 t.join()
         except:

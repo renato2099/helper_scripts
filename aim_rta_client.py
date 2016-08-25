@@ -8,9 +8,6 @@ from ServerConfig import Client
 from ServerConfig import Aim
 from ServerConfig import TellStore
 
-parser = ArgumentParser()
-parser.add_argument("outfile", help="CSV file for results", default="out_rta.csv", nargs='?')
-args = parser.parse_args()
 
 def reduceComma(x, y):
     return x + ',' + y
@@ -18,7 +15,17 @@ def reduceComma(x, y):
 def addPort(x):
     return x + ':8715'
 
-cmd = '{0}/watch/aim-benchmark/rta_client -H "{1}" -c {2} -n {3} -t {4} -o {5}'.format(Aim.builddir, reduce(reduceComma, Aim.rtaservers0 + map(addPort, Aim.rtaservers1)), Aim.numRTAClients, Aim.subscribers, Client.runTime, args.outfile)
+def startRtaClient(outfile):
+    cmd = '{0}/watch/aim-benchmark/rta_client -H "{1}" -c {2} -n {3} -t {4} -o {5}'.format(Aim.builddir, reduce(reduceComma, Aim.rtaservers0 + map(addPort, Aim.rtaservers1)), Aim.numRTAClients, Aim.subscribers, Client.runTime, outfile)
 
-print "Execute {0}".format(cmd)
-exit(os.system(cmd))
+    print "Execute {0}".format(cmd)
+    res = Thread(target=os.system, args=(cmd,))
+    res.start()
+    return res
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument("outfile", help="CSV file for results", default="out_rta.csv", nargs='?')
+    args = parser.parse_args()
+    res = startRtaClient(args.outfile)
+    res.join()

@@ -34,15 +34,16 @@ class Kudu:
     clean       = True
     master_dir  = '/mnt/data/kudu-master'
     tserver_dir = '/mnt/data/kudu-tserver'
+    tserver_dir1= '/mnt/data/kudu-tserver1'
 
 class TellStore:
     approach           = "columnmap"
     defaultMemorysize  = 0xC90000000 if approach == "logstructured" else 0xE00000000
-    defaultHashmapsize = 0x20000000  if approach == "logstructured" else 0x20000
+    defaultHashmapsize = 0x20000000  if approach == "logstructured" else 0x2000000
     memorysize         = defaultMemorysize
     hashmapsize        = defaultHashmapsize
     builddir           = General.builddir
-    scanMemory         = 2*1024*1024*1024 # 1GB
+    scanMemory         = 10*1024*1024*1024 # 10GB
     scanThreads        = 3 if approach == "logstructured" else 2
     gcInterval         = 20
     scanShift          = 3
@@ -69,13 +70,15 @@ class TellStore:
             rsync(host)
 
     @staticmethod
-    def setDefaultMemorySize():
+    def setDefaultMemorySizeAndScanThreads():
         if TellStore.approach == "logstructured":
             TellStore.memorysize  = 0xC90000000
             TellStore.hashmapsize = 0x20000000
+            TellStore.scanThreads = 3
         else:
             TellStore.memorysize  = 0xE00000000
-            TellStore.hashmapsize = 0x20000
+            TellStore.hashmapsize = 0x2000000
+            TellStore.scanThreads = 2
 
 
 class Hadoop:
@@ -94,7 +97,7 @@ class Hadoop:
 class Zookeeper:
     #zkserver      = Storage.master
     zkdir         = "/mnt/local/tell/zookeeper"
-    ticktime      = '6000'
+    ticktime      = '60000'
     datadir       = '/mnt/data/zk_data'
     clientport    = '2181'
     maxclients    = '6000'
@@ -123,6 +126,7 @@ class Cassandra:
     rpcport1       = '9161'
     storageport1   = '6999'
     sslport1       = '7002'
+    jmxport1       = '7198'
 
 class Hive:
     master            = Storage.master
@@ -133,11 +137,27 @@ class Hive:
     thriftport        = "10000"
     thriftbindhost    = master
 
+class Ramcloud:
+    ramclouddir       = "/mnt/local/tell/RAMCloud/obj.master"
+    backupdir         = "/mnt/data/rc_data"
+    backupdir1        = "/mnt/data/rc_data1"
+    backupfile        = backupdir + "/rc.bk"
+    backupfile1       = backupdir1 + "/rc.bk"
+    storageport       = 1101
+    storageport1      = 1102
+    memorysize        = 48000
+    boost_lib         = "/mnt/local/tell/boost/lib"
+    timeout           = 12000
+
 #############################
 # Used Storage Implementation
 #############################
 
+<<<<<<< HEAD
 Storage.storage = Hadoop
+=======
+Storage.storage = TellStore
+>>>>>>> 65845aace59c2e7aa0bf57de275d7024214e439b
 
 ###################
 # Processing Server
@@ -159,9 +179,10 @@ class Microbench:
     time              = 5
     noWarmUp          = False
     infinioBatch      = 16
-    txBatch           = 50
-    result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
+    txBatch           = 200
     onlyQ1            = False
+    oltpWaitTime      = 0 # for batch size 50: 119000 (50,000 per sec), 11900 (500,000 per sec), 2975000 (2000 per sec)
+    result_dir        = '/mnt/local/{0}/mbench_results'.format(General.username)
     javaDir           = '/mnt/local/{0}/mbench_jars'.format(General.username)
 
     @staticmethod
@@ -258,18 +279,25 @@ class YCSB:
     clientThreads = 32 #32 * (len(servers0) + len(servers1))
 
 class Aim:
-    sepservers0   = []
-    sepservers1   = ['euler11']
-    rtaservers0   = ["euler12"] #, 'euler07', 'euler08', 'euler09'] #, 'euler10']
+    rtaservers0   = ['euler02']
     rtaservers1   = []
+    sepservers0   = ['euler03', 'euler08', 'euler09', 'euler10', 'euler11']
+    sepservers1   = [] #rtaservers0 + ['euler01', 'euler02']
     serverthreads = 4
     schemaFile    = General.builddir + "/watch/aim-benchmark/meta_db.db"
     subscribers   = 10 * 1024 * 1024
     messageRate   = 20 * 1000
     batchSize     = 5
     numSEPClients = 5
-    numRTAClients = 1
+    numRTAClients = 2
     builddir      = General.builddir
+
+    @staticmethod
+    def rsyncBuild():
+        rsync = lambda host: os.system('rsync -ra {0}/ {1}@{2}:{0}'.format(General.builddir, General.username, host))
+        hosts = set(Aim.sepservers0 + Aim.sepservers1 + Aim.rtaservers0 + Aim.rtaservers1)
+        for host in hosts:
+            rsync(host)
 
 #####################
 # Client and Workload
