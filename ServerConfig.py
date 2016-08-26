@@ -153,11 +153,7 @@ class Ramcloud:
 # Used Storage Implementation
 #############################
 
-<<<<<<< HEAD
 Storage.storage = Hadoop
-=======
-Storage.storage = TellStore
->>>>>>> 65845aace59c2e7aa0bf57de275d7024214e439b
 
 ###################
 # Processing Server
