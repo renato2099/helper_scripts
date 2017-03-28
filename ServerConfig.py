@@ -22,7 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler08', 'euler09', 'euler01']
+#    servers    = ['euler08', 'euler09']
+    #servers    = ['euler08', 'euler09', 'euler01', 'euler10', 'euler06', 'euler05']
+    servers    = ['euler08', 'euler09', 'euler10']
     servers1   = []
     master     = "euler07"
 
@@ -86,13 +88,15 @@ class Hadoop:
     hdfsport       = '20042'
     #datanodes      = Storage.servers
     hadoopdir      = "/mnt/local/tell/hadoop"
-    #datadir        = "/mnt/local/hadoop_dir"
-    #datadir1        = "/mnt/local/hadoop1_dir"
-    datadir        = "/mnt/ramfs/hadoop"
-    datadir1        = "/mnt/ramfs/hadoop1"
+    datadir        = "/mnt/local/hadoop_dir"
+    datadir1        = "/mnt/local/hadoop1_dir"
+    #datadir        = "/mnt/ramfs/hadoop"
+    #datadir1        = "/mnt/ramfs/hadoop1"
     datadirSz      = "30"
     dfsreplication = "1"
-    ramfs          = True
+    #dfsreplication = "3"
+    #ramfs          = True
+    ramfs          = False
 
 class Zookeeper:
     #zkserver      = Storage.master
@@ -211,7 +215,13 @@ class Java:
 
 class Spark:
     master         = 'euler07'
-    slaves         = ['euler08', 'euler09', 'euler01']
+    #slaves         = ['euler08', 'euler09', 'euler10', 'euler05', 'euler06', 'euler01']
+    #slaves         = ['euler08', 'euler09', 'euler01', 'euler10', 'euler06', 'euler05', 'euler12', 'euler03', 'euler04']
+
+
+    slaves         = ['euler08', 'euler09', 'euler10']
+
+
     sparkdir       = "/mnt/local/tell/spark"
     telljava       = General.builddir + "/telljava"
     telljar        = telljava + "/telljava-1.0.jar"
@@ -223,10 +233,10 @@ class Spark:
     tellPartitions = 48
 
 class Presto:    
-    coordinator      = 'euler04'
-    nodes            = ["euler01", "euler02"]
+    coordinator      = 'euler07'
+    nodes            = ["euler08", "euler09", "euler10"]
     prestodir        = "/mnt/local/tell/presto"
-    localPresto      = "/mnt/local/mpilman/presto/presto-server-0.138-SNAPSHOT"
+    localPresto      = "/mnt/local/marenato/presto/presto-server-0.170"
     datadir          = "/mnt/data/prestotmp"
     querymaxmem      = "50GB"
     querymaxnode     = "30GB"

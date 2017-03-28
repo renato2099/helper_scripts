@@ -21,6 +21,9 @@ with open(sparkDefault, 'w+') as f:
     f.write('spark.serializer org.apache.spark.serializer.KryoSerializer\n')
     f.write('spark.driver.memory 10g\n')
     f.write('spark.executor.memory 90g\n')
+    f.write('spark.shuffle.spill.compress true\n')
+#    f.write('spark.eventLog.enabled true\n')
+#    f.write('spark.eventLog.dir  /mnt/data/sparktmp/spark-events\n')
     f.write('spark.local.dir {0}\n'.format(Spark.tmpDir))
     f.write('spark.executor.cores {0}\n'.format(Spark.numCores))
     # TellStore
@@ -37,6 +40,8 @@ with open(sparkDefault, 'w+') as f:
 
 with open(sparkEnv, 'w+') as f:
     f.write('export JAVA_HOME={0}\n'.format(Spark.javahome))
+    # DEBUG
+    #f.write('export SPARK_SUBMIT_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005')
     if Spark.useTell:
         f.write('export LD_LIBRARY_PATH={0}\n'.format(Spark.telljava))
 
