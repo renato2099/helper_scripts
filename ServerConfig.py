@@ -93,8 +93,8 @@ class Hadoop:
     #datadir        = "/mnt/ramfs/hadoop"
     #datadir1        = "/mnt/ramfs/hadoop1"
     datadirSz      = "30"
-    dfsreplication = "1"
-    #dfsreplication = "3"
+    #dfsreplication = "1"
+    dfsreplication = "3"
     #ramfs          = True
     ramfs          = False
 
@@ -140,6 +140,8 @@ class Hive:
     metastoretimeout  = "1m"
     thriftport        = "10000"
     thriftbindhost    = master
+    tpchschema        = '/mnt/SG/marenato/tellproject/PrestoTpch/hive.tpch.parquet.tables'
+    hiveserver        = False
 
 class Ramcloud:
     ramclouddir       = "/mnt/local/tell/RAMCloud/obj.master"
@@ -246,6 +248,7 @@ class Presto:
     loglevel         = "INFO"
     splitsPerMachine = 8
     debug            = True
+    read_opt         = True
 
 class Tpcc:
     servers0      = ['euler02']
@@ -269,6 +272,7 @@ class Tpch:
     storage       = Storage.storage
     builddir      = General.builddir
     scalingFactor = 10
+    #scalingFactor = 1
     @staticmethod
     def getServerList():
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
@@ -315,8 +319,9 @@ class Client:
     runTime    = 7*60
 
 class TpchWorkload:
-    dbgenFiles  = '/mnt/SG/braunl-tpch-data/all/{0}'.format(Tpch.scalingFactor)
-    updateFiles = '/mnt/SG/braunl-tpch-data/updates/{0}'.format(Tpch.scalingFactor)
+    dbgenFiles  = '/mnt/SG/marenato-tpch-data/all/{0}'.format(Tpch.scalingFactor)
+    dbgenParquet = '/mnt/SG/marenato-tpch-data/parquet/{0}'.format(Tpch.scalingFactor)
+    updateFiles = '/mnt/SG/marenato-tpch-data/updates/{0}'.format(Tpch.scalingFactor)
 
 class YCSBWorkload:
     recordcount         = (len(Storage.servers) + len(Storage.master)) * 7500000
