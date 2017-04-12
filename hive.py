@@ -5,6 +5,10 @@ import time
 from ServerConfig import General
 from ServerConfig import Hadoop
 from ServerConfig import Hive
+from ServerConfig import TpchWorkload
+from ServerConfig import Storage
+
+from argparse import ArgumentParser
 
 xmlProp = lambda key, value: "<property><name>" + key  +"</name><value>" + value + "</value></property>\n"
 
@@ -21,13 +25,14 @@ def confMaster():
          f.write("export HADOOP_HOME={0}\n".format(Hadoop.hadoopdir))
          f.write("export HADOOP_USER_CLASSPATH_FIRST=true\n")
     copyToHost([Hive.master], hiveEnv)
+
     # hive-site.xml
     hiveSiteXml = "{0}/conf/hive-site.xml".format(Hive.hivedir)
     with open (hiveSiteXml, 'w+') as f:
          f.write("<configuration>\n")
          f.write(xmlProp("hive.metastore.warehouse.dir", "/usr/hive/warehouse"))
          #f.write(xmlProp("hive.metastore.uris", "thrift://{0}:{1}".format(Hive.thriftbindhost, Hive.thriftport)))
-         f.write(xmlProp("javax.jdo.option.ConnectionURL", "jdbc:derby:;databaseName={0}/metastore_db;".format(Hive.hivedir)))
+         f.write(xmlProp("javax.jdo.option.ConnectionURL", "jdbc:derby:;databaseName={0}/metastore_db;create=true".format(Hive.hivedir)))
          f.write(xmlProp("hive.server2.thrift.port", Hive.thriftport))
          f.write(xmlProp("hive.server2.thrift.bind.host", Hive.thriftbindhost))
          f.write("</configuration>\n")
@@ -37,33 +42,83 @@ def startHive():
     # metastore
     start_hivems_cmd = "JAVA_HOME={1} {0}/bin/hive --service metastore".format(Hive.hivedir, General.javahome)
     print "{1} :{0}".format(start_hivems_cmd, Hive.master)
-    #os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hivems_cmd))
     os.system('ssh -n -f root@{0} "sh -c \'{1} > /dev/null 2>&1 &\'"'.format(Hive.master, start_hivems_cmd))
     time.sleep(2)
+
     # hiveserver
-    start_hiveserver_cmd = "JAVA_HOME={1} {0}/bin/hive --service hiveserver2".format(Hive.hivedir, General.javahome)
-    print "{1} : {0}".format(start_hiveserver_cmd, Hive.master)
-    #os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hiveserver_cmd))
-    os.system('ssh -n -f root@{0} "sh -c \'{1} > /dev/null 2>&1 &\'"'.format(Hive.master, start_hiveserver_cmd))
-    time.sleep(2)
+    if Hive.hiveserver == True:
+        start_hiveserver_cmd = "JAVA_HOME={1} {0}/bin/hive --service hiveserver2".format(Hive.hivedir, General.javahome)
+        print "{1} : {0}".format(start_hiveserver_cmd, Hive.master)
+        os.system('ssh -A root@{0} {1}'.format(Hive.master, start_hiveserver_cmd))
+        os.system('ssh -n -f root@{0} "sh -c \'{1} > /dev/null 2>&1 &\'"'.format(Hive.master, start_hiveserver_cmd))
+        time.sleep(2)
 
 def stopHive():
-    stop_hivems_cmd = "ps -a | grep HiveMetaStore | grep -v grep | awk '{print $2}' | xargs kill -9"
-    print "{1} : {0}".format(stop_hivems_cmd, Hive.master)
+    stop_hivems_cmd = "ps -ax | grep HiveMetaStore | grep -v grep | awk '{print $1}' | xargs sudo kill -9"
     os.system('ssh -A root@{0} {1}'.format(Hive.master, stop_hivems_cmd))
+    print "{1} : {0}".format(stop_hivems_cmd, Hive.master)
     # hiveserver
-    stop_hiveserver_cmd = "ps -a | grep HiverServer2 | grep -v grep | awk '{print $2}' | xargs kill -9"
-    os.system('ssh -A root@{0} {1}'.format(Hive.master, stop_hiveserver_cmd))
-    print "{1} : {0}".format(stop_hiveserver_cmd, Hive.master)
+    if Hive.hiveserver == True:
+        stop_hiveserver_cmd = "ps -ax | grep HiverServer2 | grep -v grep | awk '{print $1}' | xargs sudo kill -9"
+        os.system('ssh -A root@{0} {1}'.format(Hive.master, stop_hiveserver_cmd))
+        print "{1} : {0}".format(stop_hiveserver_cmd, Hive.master)
 
-def main(argv):
-    if ((len(argv) == 0) or (argv[0] == 'start')):
+def cmdExecute(server, cmd):
+    print "{0} : {1}".format(server, cmd)
+    os.system('ssh -A root@{0} {1}'.format(server, cmd))
+
+def loadTpchData():
+    # load tpch data 
+    cmd = "sudo {0}/bin/hadoop fs -mkdir /tpch_data".format(Hadoop.hadoopdir)
+    cmdExecute(Storage.master, cmd)
+
+    cmd = "sudo {0}/bin/hadoop fs -chmod -R 777 /tpch_data".format(Hadoop.hadoopdir)
+    cmdExecute(Storage.master, cmd)
+
+    cmd = "{0}/bin/hadoop fs -copyFromLocal {1}/* /tpch_data/.".format(Hadoop.hadoopdir, TpchWorkload.dbgenParquet)
+    cmdExecute(Storage.master, cmd)
+    
+    cmd = "{0}/bin/hadoop fs -ls /tpch_data".format(Hadoop.hadoopdir)
+    cmdExecute(Storage.master, cmd)
+
+def loadTpchSchema():
+    # create schema into hive
+    cmd = "sudo rm -r {0}/metastore_db".format(Hive.hivedir)
+    cmdExecute(Hive.master, cmd)
+
+    cmd = "sudo {0}/bin/beeline -u jdbc:hive2:// -f {1}".format(Hive.hivedir, Hive.tpchschema)
+    cmdExecute(Hive.master, cmd)
+
+def setupHiveHdfs():
+    # create dir
+    cmd = "{0}/bin/hadoop fs -mkdir -p /usr/hive/warehouse".format(Hadoop.hadoopdir)
+    cmdExecute(Storage.master, cmd)
+    # set permissions
+    cmd = "{0}/bin/hadoop fs -chmod -R 777 /usr/hive/warehouse/".format(Hadoop.hadoopdir)
+    cmdExecute(Storage.master, cmd)
+
+def main(action, use_tpch):
+    if (action == 'start'):
+       if (use_tpch == True):
+           print "\nLoading TPCH data and schema"
+           loadTpchData()
+           loadTpchSchema()
+           setupHiveHdfs()
+       print "\nStarting Hive"
        confMaster()
        startHive()
-    elif ((len(argv) == 1) and (argv[0] == 'stop')):
+    elif (action == 'stop'):
+       print "\nStopping Hive"
        stopHive()
     else:
        print "Usage: <start|stop> Default: start"
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = ArgumentParser()
+    parser.add_argument("-a", "--action")
+    parser.add_argument("-tpch", "--tpch", action="store_true", required=False)
+    args = parser.parse_args()
+    action = "start"
+    if (args.action is not None):
+        action = args.action
+    main(action, args.tpch)
