@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 import os
+import signal
 import sys
 import time
+
 from threaded_ssh import ThreadedClients
+from observer import *
+
+from functools import partial
 from ServerConfig import General
 from ServerConfig import Storage
 from ServerConfig import Hadoop
@@ -12,6 +17,17 @@ from ServerConfig import TellStore
 from ServerConfig import Java
 
 concatStr = lambda servers, sep: sep.join(servers) 
+
+import logging
+
+if 'threading' in sys.modules:
+        del sys.modules['threading']
+        import gevent
+        import gevent.socket
+        import gevent.monkey
+        gevent.monkey.patch_all()
+
+logging.basicConfig()
 
 def copyToHost(hosts, path):
     for host in hosts:
@@ -56,14 +72,20 @@ def confNode(host, coordinator = False):
          f.write("discovery.uri=http://{0}:8080\n".format(Presto.coordinator))
          f.write("node-scheduler.max-splits-per-node={0}\n".format(Presto.splitsPerMachine))
          f.write("node-scheduler.max-pending-splits-per-node-per-task={0}\n".format(0))
+         if Presto.read_opt == True:
+             f.write("optimizer.processing-optimization=columnar_dictionary\n")
     copyToHost([host], confProps)
     # catalog:
     if Storage.storage == Hadoop:
         hiveCat = "{0}/etc/catalog/hive.properties".format(Presto.prestodir)
         with open (hiveCat, 'w+') as f:
              f.write("connector.name=hive-hadoop2\n")
+             f.write("hive.allow-drop-table=true\n")
              f.write("hive.metastore.uri=thrift://{0}:{1}\n".format(Hive.metastoreuri, Hive.metastoreport))
              f.write("hive.metastore-timeout={0}\n".format(Hive.metastoretimeout))
+             if Presto.read_opt == True:
+                 f.write("hive.parquet-predicate-pushdown.enabled=true\n")
+                 f.write("hive.parquet-optimized-reader.enabled=true\n")
         copyToHost([host], hiveCat)
     elif Storage.storage == TellStore:
         tellCat = "{0}/etc/catalog/tell.properties".format(Presto.prestodir)
@@ -105,14 +127,25 @@ def sync():
 
 def startPresto():
     #start_presto_cmd = "'JAVA_HOME={1} PATH={1}/bin:$PATH {0}/bin/launcher run'".format(Presto.prestodir, General.javahome)
+    prestoObsStr = "======== SERVER STARTED ========"
     start_presto_cmd = "PATH={0}/bin:$PATH {1}/bin/launcher run".format(General.javahome, Presto.prestodir)
-    coordinator = ThreadedClients([Presto.coordinator], start_presto_cmd)
-    coordinator.start()
-    time.sleep(5)
-    workers = ThreadedClients(Presto.nodes, start_presto_cmd)
-    workers.start()
-    coordinator.join()
-    workers.join()
+    print start_presto_cmd
+    print
+    observer = Observer(prestoObsStr)
+    coordClient = ThreadedClients([Presto.coordinator], start_presto_cmd, root=True, observers=[observer])
+    coordClient.start()
+    observer.waitFor(1)
+    
+    # starting worker nodes
+    workerClients = []
+    for worker in Presto.nodes:
+        obs = Observer(prestoObsStr)
+        workerClient = ThreadedClients([worker], start_presto_cmd, root=True, observers=[obs])
+        workerClient.start()
+        obs.waitFor(1)
+        workerClients = workerClients + [workerClient]
+    
+    return workerClients + [coordClient]
 
 def stopPresto():
     hosts = [Presto.coordinator] + Presto.nodes
@@ -130,5 +163,25 @@ def main(argv):
     elif ((len(argv) == 1) and (argv[0] == 'stop')):
         stopPresto()
 
+def exitGracefully(storageClients, signal, frame):
+    print ""
+    print "\033[1;31mShutting down Presto\033[0m"
+    for client in storageClients:
+        client.kill()
+    exit(0)
+        
+#if __name__ == "__main__":
+#    storageClients = startStorage()
+#    signal.signal(signal.SIGINT, partial(exitGracefully, storageClients))
+#    print "\033[1;31mStorage started\033[0m"
+#    print "\033[1;31mHit Ctrl-C to shut it down\033[0m"
+#    for client in storageClients:
+#        client.join()
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    prestoClients = startPresto()
+    signal.signal(signal.SIGINT, partial(exitGracefully, prestoClients))
+    print "\033[1;31mPresto started\033[0m"
+    print "\033[1;31mHit Ctrl-C to shut it down\033[0m"
+    for client in prestoClients:
+        client.join()
