@@ -22,9 +22,8 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-#    servers    = ['euler08', 'euler09']
-    #servers    = ['euler08', 'euler09', 'euler01', 'euler10', 'euler06', 'euler05']
-    servers    = ['euler08', 'euler09', 'euler10']
+    servers    = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler12']
+    #servers    = ['euler08', 'euler09', 'euler10']
     servers1   = []
     master     = "euler07"
 
@@ -236,7 +235,10 @@ class Spark:
 
 class Presto:    
     coordinator      = 'euler07'
-    nodes            = ["euler08", "euler09", "euler10"]
+    #nodes            = ["euler08", "euler09", "euler10"]
+    #nodes             = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler11', 'euler12']
+    nodes             = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler12']
+    #nodes             = ['euler01']
     prestodir        = "/mnt/local/tell/presto"
     localPresto      = "/mnt/local/marenato/presto/presto-server-0.170"
     datadir          = "/mnt/data/prestotmp"
@@ -271,7 +273,8 @@ class Tpch:
     clients       = ["euler12"]
     storage       = Storage.storage
     builddir      = General.builddir
-    scalingFactor = 10
+    scalingFactor = 100
+    #scalingFactor = 10
     #scalingFactor = 1
     @staticmethod
     def getServerList():
