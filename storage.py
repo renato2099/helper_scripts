@@ -16,6 +16,7 @@ from ServerConfig import Zookeeper
 from ServerConfig import Hbase
 from ServerConfig import Cassandra
 from ServerConfig import Ramcloud
+from ServerConfig import Memsql
 
 from functools import partial
 
@@ -414,6 +415,61 @@ def startHbaseThreads():
     hbaseClients = startStorageThreads(master_cmd, region_cmd, numa0Args, numa1Args, masterObs, regionObs)
     return hbaseClients + hdfsClients + [zkClient] 
 
+def startMemsql():
+    # start memsql-ops as sudo
+    ops_cmd = "numactl -m 0 -N 0 {0}/memsql-ops/memsql-ops start --port {1} -u root --foreground".format(Memsql.msqlopsdir, Memsql.msqlopsport)
+    observer = Observer("memsql_platform.jobs.engine: Ready.")
+    # start master
+    master_ops = ThreadedClients([Storage.master], ops_cmd, root=True, observers=[observer])
+    master_ops.start()
+    observer.waitFor(1)
+    # add client binary
+    add_bin_cmd = "{0}/memsql-ops/memsql-ops  file-add -t memsql {1}".format(Memsql.msqlopsdir, Memsql.msqlbin)
+    add_client = ThreadedClients([Storage.master], add_bin_cmd, root=True)
+    add_client.start()
+    add_client.join()
+    # add master aggregator
+    maggr_cmd = "{0}/memsql-ops/memsql-ops  memsql-deploy --role master --community-edition".format(Memsql.msqlopsdir)
+    maggr_client = ThreadedClients([Storage.master], maggr_cmd, root=True)
+    maggr_client.start()
+    maggr_client.join()
+
+    # start agents
+    slave_ops = []
+    for s in  Storage.servers:
+        # start
+        obs = Observer("memsql_platform.jobs.engine: Ready.")
+        node_client = ThreadedClients([s], ops_cmd, root=True, observers=[obs])
+        node_client.start()
+        obs.waitFor(1)
+        slave_ops.append(node_client)
+        # unfollow
+        unfollow_cmd = "{0}/memsql-ops/memsql-ops unfollow".format(Memsql.msqlopsdir)
+        ufw_client = ThreadedClients([s], unfollow_cmd, root=True)
+        ufw_client.start()
+        ufw_client.join()
+        # follow master
+        follow_cmd = "{0}/memsql-ops/memsql-ops follow -h {1} -P {2}".format(Memsql.msqlopsdir, Storage.master, Memsql.msqlopsport)
+        fclient = ThreadedClients([s], follow_cmd, root=True)
+        fclient.start()
+        fclient.join()
+        # start leaves
+        start_leaves = "{0}/memsql-ops/memsql-ops  memsql-deploy --role leaf  --community-edition".format(Memsql.msqlopsdir)
+        lclient = ThreadedClients([s], start_leaves, root=True)
+        lclient.start()
+        lclient.join()
+
+        #sudo ./memsql-ops/memsql-ops/memsql-ops follow -h euler07 -P 9000
+    return [master_ops] + slave_ops
+
+def stopMemsql():
+# sudo  ./memsql-ops/memsql-ops/memsql-ops stop
+    print "Stopping all active Memsql nodes"
+    del_mnodes_cmd = "{0}/memsql-ops/memsql-ops  memsql-delete --all --delete-without-prompting".format(Memsql.msqlopsdir)
+    del_memsql_nodes = ThreadedClients([Storage.master], del_mnodes_cmd, root=True)
+    del_memsql_nodes.start()
+    del_memsql_nodes.join()
+
 def startStorage():
     # to be on the safe side, first unmount the drives if they are still mounted for whatever reason
     unmount_memfs()
@@ -447,11 +503,15 @@ def startStorage():
     elif Storage.storage == Ramcloud:
         confRamcloud()
         return startRamcloud()
+    elif Storage.storage == Memsql:
+        return startMemsql()
     return startStorageThreads(master_cmd, server_cmd, numa0Args, numa1Args, masterObs, storageObs, javaHome)
 
 def exitGracefully(storageClients, signal, frame):
     print ""
     print "\033[1;31mShutting down Storage\033[0m"
+    if Storage.storage == Memsql:
+        stopMemsql()
     for client in storageClients:
         client.kill()
     unmount_memfs()

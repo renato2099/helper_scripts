@@ -22,9 +22,10 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler04', 'euler05', 'euler06', 'euler07']
+    #servers    = ['euler04', 'euler05', 'euler06']
+    servers    = ['euler08', 'euler09', 'euler10', 'euler12']
     servers1   = []
-    master     = "euler01"
+    master     = "euler07"
 
 ##########################
 # Storage Implementations
@@ -146,11 +147,18 @@ class Ramcloud:
     boost_lib         = "/mnt/local/tell/boost/lib"
     timeout           = 12000
 
+class Memsql:
+    msqlopsdir      = "/mnt/local/tell/memsql-ops"
+    msqlbin         = "/mnt/local/tell/memsqlbin_amd64.tar.gz"
+    msqlopsdata     = "/mnt/data/memsql_data"
+    msqlinstalldir  = "/mnt/data/memsql_installs"
+    msqlopsport     = "9000"
+
 #############################
 # Used Storage Implementation
 #############################
 
-Storage.storage = TellStore
+Storage.storage = Memsql
 
 ###################
 # Processing Server
