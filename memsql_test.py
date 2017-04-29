@@ -49,6 +49,14 @@ class InsertWorker(threading.Thread):
         print "Range {0} - {1}".format(start_id, end_id)
         with get_connection() as conn:
             while start_id < end_id:
+                ## Multi inserts TODO test
+                #v = []
+                #for i in range(start_id, start_id +10000):
+                #    v.append(i)
+                #query = "INSERT INTO tbl (id) VALUES " + ",".join("(%d)" for _ in v)
+                #conn.execute(query, v)
+                #start_id += 10000
+                
                 conn.execute(QUERY_TEXT.format(start_id))
                 start_id += 1
 
