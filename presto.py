@@ -126,6 +126,8 @@ def sync():
         os.system(cmd)
 
 def startPresto():
+    sync()
+    confCluster()
     #start_presto_cmd = "'JAVA_HOME={1} PATH={1}/bin:$PATH {0}/bin/launcher run'".format(Presto.prestodir, General.javahome)
     prestoObsStr = "======== SERVER STARTED ========"
     start_presto_cmd = "PATH={0}/bin:$PATH {1}/bin/launcher run".format(General.javahome, Presto.prestodir)
@@ -157,8 +159,8 @@ def stopPresto():
 
 def main(argv):
     if ((len(argv) == 0) or (argv[0] == 'start')):
-        sync()
-        confCluster()
+        #sync()
+        #confCluster()
         startPresto()
     elif ((len(argv) == 1) and (argv[0] == 'stop')):
         stopPresto()
