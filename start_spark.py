@@ -10,7 +10,7 @@ from threaded_ssh import ThreadedClients
 master_cmd ="{0}/sbin/start-master.sh".format(Spark.sparkdir)
 slave_cmd  ="{0}/sbin/start-slave.sh spark://{1}:7077".format(Spark.sparkdir, Spark.master)
 
-jars = map(lambda x: '{0}/{1}'.format(Spark.jarsDir, x), filter(lambda x: x.endswith('jar'), os.listdir(Spark.jarsDir)))
+jars = [] #map(lambda x: '{0}/{1}'.format(Spark.jarsDir, x), filter(lambda x: x.endswith('jar'), os.listdir(Spark.jarsDir)))
 
 classpath = reduce(lambda x, y: '{0}:{1}'.format(x, y), [Spark.telljar] + jars)
 
