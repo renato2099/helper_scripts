@@ -74,9 +74,19 @@ def loadTpchData():
 
     cmd = "sudo {0}/bin/hadoop fs -chmod -R 777 /tpch_data".format(Hadoop.hadoopdir)
     cmdExecute(Storage.master, cmd)
+    relations = ["lineitem", "orders", "part"]
+    for rel in relations:
+        print("Loading Relation == {}".format(rel))
+        cmd = "sudo {0}/bin/hadoop fs -mkdir /tpch_data/{1}".format(Hadoop.hadoopdir, rel)
+        cmdExecute(Storage.master, cmd)
 
-    cmd = "{0}/bin/hadoop fs -copyFromLocal {1}/* /tpch_data/.".format(Hadoop.hadoopdir, TpchWorkload.dbgenParquet)
-    cmdExecute(Storage.master, cmd)
+        cmd = "sudo {0}/bin/hadoop fs -chmod -R 777 /tpch_data/{1}".format(Hadoop.hadoopdir, rel)
+        cmdExecute(Storage.master, cmd)
+        cmd = "{0}/bin/hadoop fs -copyFromLocal {1}/{2}.*.parquet /tpch_data/{2}/.".format(Hadoop.hadoopdir, TpchWorkload.dbgenParquet, rel)
+        cmdExecute(Storage.master, cmd)
+
+    #cmd = "{0}/bin/hadoop fs -copyFromLocal {1}/* /tpch_data/.".format(Hadoop.hadoopdir, TpchWorkload.dbgenParquet)
+    #cmdExecute(Storage.master, cmd)
     
     cmd = "{0}/bin/hadoop fs -ls /tpch_data".format(Hadoop.hadoopdir)
     cmdExecute(Storage.master, cmd)
@@ -97,13 +107,15 @@ def setupHiveHdfs():
     cmd = "{0}/bin/hadoop fs -chmod -R 777 /usr/hive/warehouse/".format(Hadoop.hadoopdir)
     cmdExecute(Storage.master, cmd)
 
-def main(action, use_tpch):
+def main(action, use_tpch, schema):
     if (action == 'start'):
-       if (use_tpch == True):
-           print "\nLoading TPCH data and schema"
-           loadTpchData()
+       if schema:
+           print "\nLoading TPCH schema"
            loadTpchSchema()
-           setupHiveHdfs()
+       if use_tpch:
+           print "\nLoading TPCH data"
+           loadTpchData()
+       setupHiveHdfs()
        print "\nStarting Hive"
        confMaster()
        startHive()
@@ -115,10 +127,11 @@ def main(action, use_tpch):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-a", "--action")
-    parser.add_argument("-tpch", "--tpch", action="store_true", required=False)
+    parser.add_argument("-a", "--action", help="Starts/stops hive. Options:start|stop")
+    parser.add_argument("-l", "--load_tpch", help="Loads into HDFS", action="store_true", required=False)
+    parser.add_argument("-s", "--schema", help="Setup TPCH schema.", action="store_true", required=False)
     args = parser.parse_args()
     action = "start"
     if (args.action is not None):
         action = args.action
-    main(action, args.tpch)
+    main(action, args.load_tpch, args.schema)
