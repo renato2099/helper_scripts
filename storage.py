@@ -111,16 +111,19 @@ def confHdfs():
 
     # mount tmpfs for master and servers on numa 0
     cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz)
+    #cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir, Hadoop.datadirSz)
     mkClients = ThreadedClients([Storage.master] + Storage.servers, cmdHadoopDir, root=True)
     mkClients.start()
     mkClients.join()
 
     # mount tmpfs for servers on numa 1
-    cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir1) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size{1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz)
+    cmdHadoopDir = "echo {0}; mkdir -p {0}".format(Hadoop.datadir1) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size{1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz)
+    #cmdHadoopDir = "rm -r {0}; mkdir -p {0}".format(Hadoop.datadir1) if not Hadoop.ramfs else "mkdir -p {0}; mount -t tmpfs -o size{1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz)
     #mkClients = ThreadedClients(Storage.servers1, "mkdir -p {0}; mount -t tmpfs -o size={1}G tmpfs {0}".format(Hadoop.datadir1, Hadoop.datadirSz), root=True)
     mkClients = ThreadedClients(Storage.servers1, cmdHadoopDir, root=True)
     mkClients.start()
     mkClients.join()
+    print("-- DONE setting up Hadoop dirs --")
 
     # modify core-site.xml
     coreSiteXml = '{0}/etc/hadoop/core-site.xml'.format(Hadoop.hadoopdir)
@@ -176,7 +179,7 @@ def confHdfs():
     copyToHost([Storage.master], slavesFile)
 
     # format namenode
-    nn_format_cmd = "numactl -m 0 -N 0 {0}/bin/hadoop namenode -format".format(Hadoop.hadoopdir)
+    nn_format_cmd = "numactl -m 0 -N 0 {0}/bin/hdfs namenode -format".format(Hadoop.hadoopdir)
     nnFormatClients = ThreadedClients([Storage.master], nn_format_cmd, root=True)
     nnFormatClients.start()
     nnFormatClients.join()
