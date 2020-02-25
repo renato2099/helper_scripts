@@ -41,6 +41,7 @@ def confNode(host, coordinator = False):
          f.write("node.environment=ethz\n")
          f.write("node.id=ffffffff-ffff-ffff-ffff-{0}\n".format(host))
          f.write("node.data-dir={0}\n".format(Presto.datadir))
+         f.write("node-scheduler.max-splits-per-node={0}\n".format(Presto.max_splits_per_node))
     copyToHost([host], nodeProps)
     # jvm config
     jvmConf = "{0}/etc/jvm.config".format(Presto.prestodir)
@@ -62,18 +63,24 @@ def confNode(host, coordinator = False):
     with open (confProps, 'w+') as f:
          if (coordinator):
             f.write("coordinator=true\n")
-            f.write("node-scheduler.include-coordinator=false\n")
+            #f.write("node-scheduler.include-coordinator=false\n")
+            f.write("node-scheduler.include-coordinator=true\n")
             f.write("discovery-server.enabled=true\n")
          else:
             f.write("coordinator=false\n")
          f.write("http-server.http.port={0}\n".format(Presto.httpport))
+         f.write("query.max-total-memory-per-node={0}\n".format(Presto.querytotalmempernode))
          f.write("query.max-memory={0}\n".format(Presto.querymaxmem))
          f.write("query.max-memory-per-node={0}\n".format(Presto.querymaxnode))
+         f.write("memory.heap-headroom-per-node={0}\n".format(Presto.heapheadroomnode))
          f.write("discovery.uri=http://{0}:8080\n".format(Presto.coordinator))
          f.write("node-scheduler.max-splits-per-node={0}\n".format(Presto.splitsPerMachine))
          f.write("node-scheduler.max-pending-splits-per-node-per-task={0}\n".format(0))
-         if Presto.read_opt == True:
-             f.write("optimizer.processing-optimization=columnar_dictionary\n")
+         #f.write("query.queue-config-file={0}/etc/queue_config.properties\n".format(Presto.prestodir))
+         #f.write("node-scheduler.max-pending-splits-per-task={0}\n".format(0))
+         # The "processing-optimization" property has been disabled in Presto 0.174
+         #if Presto.read_opt == True:
+         #    f.write("optimizer.processing-optimization=columnar_dictionary\n")
     copyToHost([host], confProps)
     # catalog:
     if Storage.storage == Hadoop:
@@ -83,9 +90,10 @@ def confNode(host, coordinator = False):
              f.write("hive.allow-drop-table=true\n")
              f.write("hive.metastore.uri=thrift://{0}:{1}\n".format(Hive.metastoreuri, Hive.metastoreport))
              f.write("hive.metastore-timeout={0}\n".format(Hive.metastoretimeout))
-             if Presto.read_opt == True:
-                 f.write("hive.parquet-predicate-pushdown.enabled=true\n")
-                 f.write("hive.parquet-optimized-reader.enabled=true\n")
+             # disabled in presto-237
+             #if Presto.read_opt == True:
+             #    f.write("hive.parquet-predicate-pushdown.enabled=true\n")
+             #    f.write("hive.parquet-optimized-reader.enabled=true\n")
         copyToHost([host], hiveCat)
     elif Storage.storage == TellStore:
         tellCat = "{0}/etc/catalog/tell.properties".format(Presto.prestodir)
@@ -103,8 +111,23 @@ def confNode(host, coordinator = False):
     logProps = "{0}/etc/log.properties".format(Presto.prestodir)
     f = open(logProps, 'w+')
     f.write("com.facebook.presto={0}\n".format(Presto.loglevel))
+    f.write("com.facebook.presto.server.PluginManager=DEBUG")
     f.close()
     copyToHost([host], logProps)
+    # queue config file
+    queueProps = "{0}/etc/queue_config.properties".format(Presto.prestodir)
+    f = open(queueProps, 'w+')
+    f.write("{")
+    f.write("\"queues\": {\n")
+    f.write("\"user.${USER}\": { \"maxConcurrent\": 5, \"maxQueued\": 20 },\n")
+    f.write("\"user_pipeline.${USER}\": { \"maxConcurrent\": 1, \"maxQueued\": 10 },\n")
+    f.write("\"pipeline\": { \"maxConcurrent\": 10, \"maxQueued\": 100 },\n")
+    f.write("\"admin\": { \"maxConcurrent\": 100, \"maxQueued\": 100 },\n")
+    f.write("\"global\": { \"maxConcurrent\": 100, \"maxQueued\": 1000 }\n")
+    f.write("},\n")
+    f.write("\"rules\": [ { \"queues\": [ \"user.${USER}\", \"global\" ] } ]\n")
+    f.write("}")
+
     # tmp files for logging
     os.system("ssh root@{0} 'rm -rf {1}; mkdir {1}'".format(host, Presto.datadir))
     

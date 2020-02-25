@@ -22,8 +22,9 @@ class General:
     javahome     = "/mnt/local/tell/java8"
 
 class Storage:
-    servers    = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler12']
-    #servers    = ['euler08', 'euler09', 'euler10']
+    #servers    = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler11']
+    #servers     = ['euler04']
+    servers    = ['euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler08']
     servers1   = []
     master     = "euler07"
 
@@ -139,7 +140,8 @@ class Hive:
     metastoretimeout  = "1m"
     thriftport        = "10000"
     thriftbindhost    = master
-    tpchschema        = '/mnt/SG/marenato/tellproject/PrestoTpch/hive.tpch.parquet.tables'
+    tpchschema        = '/mnt/scratch/marenato/projects/project_tell/PrestoTpch/hive.tpch.parquet.tables3'
+    #tpchschema        = '/mnt/SG/marenato/project_tell/PrestoTpch/hive.tpch.parquet.tables'
     hiveserver        = False
 
 class Ramcloud:
@@ -217,10 +219,12 @@ class Java:
 class Spark:
     master         = 'euler07'
     #slaves         = ['euler08', 'euler09', 'euler10', 'euler05', 'euler06', 'euler01']
-    #slaves         = ['euler08', 'euler09', 'euler01', 'euler10', 'euler06', 'euler05', 'euler12', 'euler03', 'euler04']
+    #slaves         = ['euler01', 'euler05', 'euler06', 'euler07', 'euler08']
+    slaves     = ['euler01', 'euler03', 'euler05', 'euler06', 'euler07', 'euler08']
+    #slaves          = ['euler08',  'euler09', 'euler10', 'euler01',  'euler05', 'euler06']
+    #slaves          = ['euler02',  'euler03']
 
-
-    slaves         = ['euler08', 'euler09', 'euler10']
+    #slaves         = ['euler08', 'euler05', 'euler09']
 
 
     sparkdir       = "/mnt/local/tell/spark"
@@ -235,19 +239,22 @@ class Spark:
 
 class Presto:    
     coordinator      = 'euler07'
-    #nodes            = ["euler08", "euler09", "euler10"]
-    #nodes             = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler11', 'euler12']
-    nodes             = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler12']
-    #nodes             = ['euler01']
+    #nodes             = ['euler08', 'euler09', 'euler10', 'euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler11']
+    nodes            = ['euler01', 'euler02', 'euler03', 'euler04', 'euler05', 'euler06', 'euler08']
     prestodir        = "/mnt/local/tell/presto"
-    localPresto      = "/mnt/local/marenato/presto/presto-server-0.170"
-    datadir          = "/mnt/data/prestotmp"
-    querymaxmem      = "50GB"
-    querymaxnode     = "30GB"
+    #localPresto      = "/mnt/local/marenato/presto/presto-server-0.170"
+    localPresto      = "/mnt/local/marenato/presto/presto-server-327"
+    datadir          = "/mnt/local/prestotmp"
+    querytotalmempernode = "90GB"
+    querymaxmem      = "85GB"
+    querymaxnode     = "85GB"
+    #querymaxnode     = "50GB"
+    heapheadroomnode = "10GB"
     jvmheap          = "100G" # java memory is specified differently than presto
     jvmheapregion    = "32M"
     httpport         = "8080"
-    loglevel         = "INFO"
+    loglevel         = "DEBUG"
+    max_splits_per_node = 400
     splitsPerMachine = 8
     debug            = True
     read_opt         = True
@@ -273,9 +280,7 @@ class Tpch:
     clients       = ["euler12"]
     storage       = Storage.storage
     builddir      = General.builddir
-    scalingFactor = 100
-    #scalingFactor = 10
-    #scalingFactor = 1
+    scalingFactor = 500
     @staticmethod
     def getServerList():
         serversForList = lambda l, p: map(lambda x: '{0}:{1}'.format(x, p), l)
@@ -323,7 +328,8 @@ class Client:
 
 class TpchWorkload:
     dbgenFiles  = '/mnt/SG/marenato-tpch-data/all/{0}'.format(Tpch.scalingFactor)
-    dbgenParquet = '/mnt/SG/marenato-tpch-data/parquet/{0}'.format(Tpch.scalingFactor)
+    dbgenParquet = '/mnt/scratch/muellein/tpch-sf-{0}/modified-dbgen'.format(Tpch.scalingFactor)
+    #dbgenParquet = '/mnt/SG/marenato-tpch-data/parquet/{0}'.format(Tpch.scalingFactor)
     updateFiles = '/mnt/SG/marenato-tpch-data/updates/{0}'.format(Tpch.scalingFactor)
 
 class YCSBWorkload:
