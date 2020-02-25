@@ -1,4 +1,5 @@
 from pssh import ParallelSSHClient
+#from pssh.clients import ParallelSSHClient
 from threading import Thread
 
 import traceback
@@ -80,7 +81,7 @@ class ChildClient(Thread):
             frame = last_frame().tb_frame
             ns = dict(frame.f_globals)
             ns.update(frame.f_locals)
-            code.interact(local=ns)
+            #code.interact(local=ns)
 
 class ThreadedClients(Thread):
     def __init__(self, servers, cmd, rnd_start=False, root=True, observers=[]):
